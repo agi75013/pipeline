@@ -29,6 +29,8 @@ Architecture cible en 3 couches (`INTENT.md`), à respecter dès qu'on ajoute du
 - Service : règles métier (changement d'étape, calcul des prospects à relancer : date de relance aujourd'hui ou antérieure). Couvert par des tests unitaires.
 - Données : seule couche qui parle à la base (SQLite en local, Turso comme cible de migration). Migrer vers une base managée ne doit modifier que cette couche.
 
+Dossiers : `src/presentation`, `src/service`, `src/data` (exemples vides pour l'instant, tests dans `__tests__/<couche>/`). Sens des dépendances : présentation → service → données, imposé par `no-restricted-imports` dans `eslint.config.mjs`.
+
 Hors périmètre assumé : pas d'authentification, un seul utilisateur, déploiement Vercel.
 
 ## Conventions spécifiques
