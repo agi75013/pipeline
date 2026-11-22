@@ -19,8 +19,16 @@ export async function ajouterProspect(
     email: texte(formData, "email"),
     telephone: texte(formData, "telephone"),
   }
-  const resultat = await obtenirServiceProspects().creerProspect(saisie)
-  if (!resultat.ok) return { erreurs: resultat.erreurs, valeurs: saisie }
+  try {
+    const resultat = await obtenirServiceProspects().creerProspect(saisie)
+    if (!resultat.ok) return { erreurs: resultat.erreurs, valeurs: saisie }
+  } catch (erreur) {
+    console.error("Échec de l'ajout d'un prospect", erreur)
+    return {
+      erreurGenerale: "Impossible d'enregistrer, réessayez.",
+      valeurs: saisie,
+    }
+  }
   revalidatePath("/")
   return {}
 }

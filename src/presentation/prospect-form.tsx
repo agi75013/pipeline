@@ -15,6 +15,8 @@ import { Label } from "@/components/ui/label"
 
 export type EtatFormulaire = {
   erreurs?: { nom?: string; contact?: string }
+  /** Échec technique (base indisponible...), pas une erreur de saisie. */
+  erreurGenerale?: string
   valeurs?: Record<string, string>
 }
 
@@ -89,7 +91,12 @@ export function ProspectForm({ action }: { action: ActionFormulaire }) {
             )}
           </div>
         </CardContent>
-        <CardFooter className="justify-end">
+        <CardFooter className="justify-end gap-4">
+          {etat.erreurGenerale && (
+            <p role="alert" className="text-sm text-destructive">
+              {etat.erreurGenerale}
+            </p>
+          )}
           <Button type="submit" disabled={enCours}>
             Ajouter
           </Button>

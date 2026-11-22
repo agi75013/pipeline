@@ -40,4 +40,17 @@ describe("formulaire d'ajout", () => {
     await userEvent.click(screen.getByRole("button", { name: "Ajouter" }))
     expect(await screen.findByText("Le nom est obligatoire")).toBeInTheDocument()
   })
+
+  it("affiche le message d'échec d'enregistrement et garde la saisie", async () => {
+    const action = async (): Promise<EtatFormulaire> => ({
+      erreurGenerale: "Impossible d'enregistrer, réessayez.",
+      valeurs: { nom: "Camille Durand", email: "c@exemple.fr" },
+    })
+    render(<ProspectForm action={action} />)
+    await userEvent.click(screen.getByRole("button", { name: "Ajouter" }))
+    expect(
+      await screen.findByText("Impossible d'enregistrer, réessayez."),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText("Nom")).toHaveValue("Camille Durand")
+  })
 })
