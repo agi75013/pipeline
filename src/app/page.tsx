@@ -1,26 +1,16 @@
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Suspense } from "react"
+import { connection } from "next/server"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { ProspectForm } from "@/presentation/prospect-form"
+import { ProspectList } from "@/presentation/prospect-list"
+import { obtenirServiceProspects } from "@/service/default-prospect-service"
+import { ajouterProspect } from "@/app/actions"
 
-const ETAPES = [
-  "Nouveau",
-  "Contacté",
-  "Réponse reçue",
-  "RDV",
-  "Gagné",
-  "Perdu",
-] as const;
+async function Prospects() {
+  await connection()
+  const prospects = await obtenirServiceProspects().listerProspects()
+  return <ProspectList prospects={prospects} />
+}
 
 export default function Home() {
   return (
@@ -35,46 +25,15 @@ export default function Home() {
         <ThemeToggle />
       </header>
 
-      <section aria-label="Étapes" className="flex flex-wrap gap-2">
-        {ETAPES.map((etape, index) => (
-          <Badge key={etape} variant={index === 0 ? "default" : "outline"}>
-            {etape}
-          </Badge>
-        ))}
-      </section>
+      <ProspectForm action={ajouterProspect} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl">Nouveau prospect</CardTitle>
-          <CardDescription>
-            Aperçu du formulaire, pas encore relié à une base.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="grid gap-1.5">
-            <Label htmlFor="nom">Nom</Label>
-            <Input id="nom" placeholder="Nom du contact" />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="societe">Société</Label>
-            <Input id="societe" placeholder="Nom de la société" />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="contact@exemple.fr" />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea id="notes" rows={3} placeholder="Contexte de l'échange" />
-          </div>
-        </CardContent>
-        <CardFooter className="justify-end gap-2">
-          <Button type="button" variant="ghost">
-            Annuler
-          </Button>
-          <Button type="button">Ajouter</Button>
-        </CardFooter>
-      </Card>
+      <section aria-label="Prospects">
+        <Suspense
+          fallback={<p className="text-muted-foreground">Chargement...</p>}
+        >
+          <Prospects />
+        </Suspense>
+      </section>
     </main>
-  );
+  )
 }
