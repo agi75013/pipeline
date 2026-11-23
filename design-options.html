@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pipeline : trois design systems</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Newsreader:opsz,wght@6..72,500;6..72,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Albert+Sans:wght@400;500;600&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: oklch(0.93 0.004 90); color: oklch(0.25 0.01 90); font: 15px/1.5 system-ui, sans-serif; }
+  .page-head { max-width: 1400px; margin: 0 auto; padding: 28px 24px 8px; }
+  .page-head h1 { margin: 0 0 6px; font-size: 1.5rem; line-height: 1.2; }
+  .page-head p { margin: 0; max-width: 70ch; color: oklch(0.42 0.01 90); }
+  .grid { max-width: 1400px; margin: 0 auto; padding: 16px 24px 48px; display: grid; grid-template-columns: repeat(3, minmax(360px, 1fr)); gap: 20px; overflow-x: auto; align-items: start; }
+
+  /* ---------- Tokens par option ---------- */
+  .a { --radius: 0.5rem; --font-head: "Newsreader", Georgia, serif; --font-body: "Albert Sans", system-ui, sans-serif; --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace; --head-weight: 600; --head-track: -0.01em; }
+  .a[data-theme="light"] { color-scheme: light; --background: oklch(0.975 0.012 85); --card: oklch(0.995 0.006 85); --foreground: oklch(0.24 0.02 60); --muted-foreground: oklch(0.46 0.02 60); --border: oklch(0.87 0.018 80); --input: oklch(0.80 0.02 80); --primary: oklch(0.40 0.08 160); --primary-text: oklch(0.40 0.08 160); --primary-foreground: oklch(0.98 0.01 90); --secondary: oklch(0.93 0.02 85); --secondary-foreground: oklch(0.28 0.03 60); --destructive: oklch(0.50 0.19 28); --success: oklch(0.45 0.10 155); --ring: oklch(0.55 0.10 160); }
+  .a[data-theme="dark"] { color-scheme: dark; --background: oklch(0.20 0.012 60); --card: oklch(0.25 0.014 60); --foreground: oklch(0.94 0.012 85); --muted-foreground: oklch(0.72 0.02 80); --border: oklch(0.33 0.015 60); --input: oklch(0.42 0.02 60); --primary: oklch(0.74 0.11 160); --primary-text: oklch(0.74 0.11 160); --primary-foreground: oklch(0.20 0.03 160); --secondary: oklch(0.30 0.015 60); --secondary-foreground: oklch(0.93 0.01 85); --destructive: oklch(0.72 0.16 28); --success: oklch(0.76 0.13 155); --ring: oklch(0.74 0.11 160); }
+  .b { --radius: 0.375rem; --font-head: "IBM Plex Sans", system-ui, sans-serif; --font-body: "IBM Plex Sans", system-ui, sans-serif; --font-mono: "IBM Plex Mono", ui-monospace, monospace; --head-weight: 600; --head-track: -0.005em; }
+  .b[data-theme="light"] { color-scheme: light; --background: oklch(0.97 0.004 90); --card: oklch(0.995 0.003 90); --foreground: oklch(0.22 0.015 260); --muted-foreground: oklch(0.47 0.015 260); --border: oklch(0.88 0.008 260); --input: oklch(0.78 0.01 260); --primary: oklch(0.76 0.15 72); --primary-text: oklch(0.48 0.12 65); --primary-foreground: oklch(0.20 0.02 70); --secondary: oklch(0.93 0.006 260); --secondary-foreground: oklch(0.25 0.015 260); --destructive: oklch(0.50 0.18 25); --success: oklch(0.45 0.11 155); --ring: oklch(0.62 0.15 70); }
+  .b[data-theme="dark"] { color-scheme: dark; --background: oklch(0.19 0.01 260); --card: oklch(0.235 0.012 260); --foreground: oklch(0.95 0.005 90); --muted-foreground: oklch(0.74 0.012 260); --border: oklch(0.34 0.014 260); --input: oklch(0.42 0.014 260); --primary: oklch(0.80 0.15 75); --primary-text: oklch(0.80 0.15 75); --primary-foreground: oklch(0.20 0.02 70); --secondary: oklch(0.30 0.014 260); --secondary-foreground: oklch(0.94 0.005 90); --destructive: oklch(0.74 0.16 25); --success: oklch(0.78 0.14 155); --ring: oklch(0.80 0.15 75); }
+  .c { --radius: 0.25rem; --font-head: "Bricolage Grotesque", system-ui, sans-serif; --font-body: "Public Sans", system-ui, sans-serif; --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace; --head-weight: 700; --head-track: -0.02em; }
+  .c[data-theme="light"] { color-scheme: light; --background: oklch(0.965 0.008 250); --card: oklch(0.995 0.003 250); --foreground: oklch(0.22 0.03 255); --muted-foreground: oklch(0.46 0.025 255); --border: oklch(0.87 0.014 250); --input: oklch(0.78 0.02 250); --primary: oklch(0.52 0.21 32); --primary-text: oklch(0.52 0.21 32); --primary-foreground: oklch(0.99 0.005 250); --secondary: oklch(0.92 0.014 250); --secondary-foreground: oklch(0.25 0.03 255); --destructive: oklch(0.42 0.17 20); --success: oklch(0.45 0.11 160); --ring: oklch(0.52 0.21 32); }
+  .c[data-theme="dark"] { color-scheme: dark; --background: oklch(0.20 0.03 255); --card: oklch(0.25 0.032 255); --foreground: oklch(0.96 0.008 250); --muted-foreground: oklch(0.74 0.02 255); --border: oklch(0.35 0.03 255); --input: oklch(0.44 0.03 255); --primary: oklch(0.70 0.18 35); --primary-text: oklch(0.70 0.18 35); --primary-foreground: oklch(0.18 0.03 255); --secondary: oklch(0.30 0.03 255); --secondary-foreground: oklch(0.95 0.008 250); --destructive: oklch(0.72 0.16 20); --success: oklch(0.76 0.13 160); --ring: oklch(0.70 0.18 35); }
+
+  /* ---------- Système commun, piloté par les tokens ---------- */
+  .ds { background: var(--background); color: var(--foreground); font-family: var(--font-body); border-radius: 14px; border: 1px solid var(--border); padding: 24px; min-width: 0; }
+  .ds h2, .ds h3, .ds .t-title, .ds .t-sub, .ds .c-name { font-family: var(--font-head); font-weight: var(--head-weight); letter-spacing: var(--head-track); }
+  .ds-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .ds-head h2 { margin: 0 0 6px; font-size: 1.75rem; line-height: 1.15; text-wrap: balance; }
+  .lead { margin: 0 0 8px; color: var(--muted-foreground); max-width: 46ch; }
+  .ds h3 { margin: 28px 0 10px; font-size: 1.05rem; padding-top: 18px; border-top: 1px solid var(--border); }
+  .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  .swatches { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .swatches li { display: grid; gap: 2px; font-size: 0.8rem; }
+  .swatches i { font-style: normal; font-family: var(--font-mono); color: var(--muted-foreground); font-size: 0.7rem; }
+  .sw { display: block; height: 44px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 4px; }
+
+  .t-title { margin: 0; font-size: 1.75rem; line-height: 1.15; }
+  .t-sub { margin: 6px 0 0; font-size: 1.2rem; }
+  .t-body { margin: 10px 0 0; max-width: 60ch; }
+  .t-cap { margin: 8px 0 0; font-size: 0.8rem; color: var(--muted-foreground); }
+  .t-mono { margin: 8px 0 0; font-family: var(--font-mono); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+  .fonts { margin: 12px 0 0; font-size: 0.8rem; color: var(--muted-foreground); }
+
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+  .btn { font: 500 0.875rem/1 var(--font-body); height: 36px; padding: 0 14px; border-radius: var(--radius); border: 1px solid transparent; cursor: pointer; transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.1s; }
+  .btn.sm { height: 30px; padding: 0 10px; font-size: 0.8rem; }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn.primary { background: var(--primary); color: var(--primary-foreground); }
+  .btn.primary:hover:not(:disabled) { background: color-mix(in oklch, var(--primary), var(--foreground) 14%); }
+  .btn.secondary { background: var(--secondary); color: var(--secondary-foreground); border-color: var(--border); }
+  .btn.secondary:hover { background: color-mix(in oklch, var(--secondary), var(--foreground) 7%); }
+  .btn.ghost { background: transparent; color: var(--foreground); }
+  .btn.ghost:hover { background: var(--secondary); }
+  .btn.destructive { background: transparent; color: var(--destructive); border-color: color-mix(in oklch, var(--destructive), transparent 55%); }
+  .btn.destructive:hover { background: color-mix(in oklch, var(--destructive), transparent 90%); }
+  .btn:focus-visible, .btn.is-focus { outline: none; box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring); }
+
+  .fields { display: grid; gap: 12px; }
+  .field { display: grid; gap: 4px; font-size: 0.85rem; font-weight: 500; }
+  .field small { font-weight: 400; color: var(--muted-foreground); font-size: 0.75rem; }
+  .field input, .field textarea { font: 400 0.9rem/1.4 var(--font-body); color: var(--foreground); background: var(--card); border: 1px solid var(--input); border-radius: var(--radius); padding: 8px 10px; width: 100%; resize: vertical; }
+  .field input::placeholder { color: var(--muted-foreground); }
+  .field input:focus, .field textarea:focus, .field input.is-focus { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring), transparent 70%); }
+  .field.err input { border-color: var(--destructive); }
+  .field .msg { color: var(--destructive); font-weight: 500; }
+
+  .badge { display: inline-flex; align-items: center; gap: 6px; font: 500 0.75rem/1 var(--font-body); padding: 5px 9px; border-radius: 999px; background: var(--secondary); color: var(--secondary-foreground); border: 1px solid var(--border); white-space: nowrap; }
+  .badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--dot, var(--muted-foreground)); }
+  .st-1 { --dot: var(--muted-foreground); }
+  .st-2 { --dot: color-mix(in oklch, var(--primary), var(--background) 45%); }
+  .st-3 { --dot: color-mix(in oklch, var(--primary), var(--background) 15%); }
+  .st-4 { --dot: var(--primary); }
+  .st-5 { --dot: var(--success); }
+  .st-6 { --dot: var(--destructive); opacity: 0.75; }
+
+  .contact { background: var(--card); border: 1px solid var(--border); border-radius: calc(var(--radius) + 4px); padding: 16px; margin-bottom: 12px; display: grid; gap: 6px; }
+  .c-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+  .c-name { margin: 0; font-size: 1.1rem; line-height: 1.2; }
+  .c-co { margin: 2px 0 0; color: var(--muted-foreground); font-size: 0.85rem; }
+  .c-line { margin: 0; font-size: 0.875rem; }
+  .c-notes { margin: 4px 0 0; font-size: 0.85rem; color: var(--muted-foreground); max-width: 56ch; }
+  .c-foot { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .due { display: inline-flex; gap: 8px; align-items: center; font-size: 0.8rem; font-weight: 600; color: var(--primary-text); }
+  .due b { font-weight: 500; color: var(--foreground); }
+  .when { font-size: 0.8rem; color: var(--muted-foreground); }
+  .c-actions { display: flex; gap: 6px; }
+  .contact:not(.calm) { border-color: color-mix(in oklch, var(--primary), var(--border) 55%); }
+
+  @media (max-width: 1200px) { .grid { grid-template-columns: repeat(3, 380px); } }
+  @media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1>Pipeline : trois design systems</h1>
+  <p>Mini CRM de prospection, usage quotidien par une seule personne. Chaque colonne montre les mêmes composants : couleurs, typographie, boutons, champs, étapes et carte de contact (données fictives). Chaque colonne a son bouton clair/sombre. Les boutons et champs réagissent au survol et au clavier.</p>
+</header>
+<main class="grid">
+
+<section class="ds a" data-theme="light" aria-labelledby="t-a">
+  <header class="ds-head">
+    <div class="ds-title"><h2 id="t-a">A. Carnet</h2><button type="button" class="btn secondary sm theme-toggle" aria-pressed="false" data-light="Passer en clair" data-dark="Passer en sombre">Passer en sombre</button></div>
+    <p class="lead">Papier chaud, encre et vert sapin. Calme et lisible, pour une relecture rapide chaque matin.</p>
+  </header>
+
+  <h3>Couleurs</h3>
+  <ul class="swatches">
+    <li><span class="sw" style="background:var(--background)"></span><b>Fond</b><i>--background</i></li>
+    <li><span class="sw" style="background:var(--card)"></span><b>Carte</b><i>--card</i></li>
+    <li><span class="sw" style="background:var(--foreground)"></span><b>Texte</b><i>--foreground</i></li>
+    <li><span class="sw" style="background:var(--muted-foreground)"></span><b>Texte discret</b><i>--muted-foreground</i></li>
+    <li><span class="sw" style="background:var(--primary)"></span><b>Primaire</b><i>--primary</i></li>
+    <li><span class="sw" style="background:var(--secondary)"></span><b>Secondaire</b><i>--secondary</i></li>
+    <li><span class="sw" style="background:var(--border)"></span><b>Bordure</b><i>--border</i></li>
+    <li><span class="sw" style="background:var(--success)"></span><b>Succès (Gagné)</b><i>--success</i></li>
+    <li><span class="sw" style="background:var(--destructive)"></span><b>Alerte, suppression</b><i>--destructive</i></li>
+  </ul>
+
+  <h3>Typographie</h3>
+  <div class="type">
+    <p class="t-title">Relances du jour</p>
+    <p class="t-sub">Trois prospects à contacter</p>
+    <p class="t-body">Corps de texte : un paragraphe lisible pour les notes d'un échange, avec une longueur de ligne confortable.</p>
+    <p class="t-cap">Légende, aide de champ, libellé secondaire</p>
+    <p class="t-mono">Relance : 2026-11-20 · 06 12 34 56 78</p>
+    <p class="fonts">Titres : Newsreader. Texte : Albert Sans.</p>
+  </div>
+
+  <h3>Boutons</h3>
+  <div class="row">
+    <button class="btn primary">Ajouter</button>
+    <button class="btn secondary">Modifier</button>
+    <button class="btn ghost">Annuler</button>
+    <button class="btn destructive">Supprimer</button>
+    <button class="btn primary" disabled>Désactivé</button>
+    <button class="btn primary is-focus" tabindex="-1">Focus</button>
+  </div>
+
+  <h3>Champs</h3>
+  <div class="fields">
+    <label class="field"><span>Nom</span><input type="text" value="Camille Durand" /></label>
+    <label class="field"><span>Société</span><input type="text" placeholder="Nom de la société" /></label>
+    <label class="field"><span>Email</span><input type="text" class="is-focus" value="camille@exemple.fr" /><small>État focus</small></label>
+    <label class="field err"><span>Téléphone</span><input type="text" value="06 12 34" aria-invalid="true" /><small class="msg">Numéro incomplet : 10 chiffres attendus.</small></label>
+    <label class="field"><span>Notes</span><textarea rows="2">Rappeler après la démo. Intéressée par l'offre mensuelle.</textarea></label>
+  </div>
+
+  <h3>Étapes</h3>
+  <div class="row">
+    <span class="badge st-1">Nouveau</span>
+    <span class="badge st-2">Contacté</span>
+    <span class="badge st-3">Réponse reçue</span>
+    <span class="badge st-4">RDV</span>
+    <span class="badge st-5">Gagné</span>
+    <span class="badge st-6">Perdu</span>
+  </div>
+
+  <h3>Carte de contact</h3>
+  <article class="contact">
+    <div class="c-top">
+      <div>
+        <p class="c-name">Camille Durand</p>
+        <p class="c-co">Atelier Exemple</p>
+      </div>
+      <span class="badge st-3">Réponse reçue</span>
+    </div>
+    <p class="c-line">camille@exemple.fr</p>
+    <p class="c-line mono">06 12 34 56 78</p>
+    <p class="c-notes">Rappeler après la démo. Intéressée par l'offre mensuelle.</p>
+    <div class="c-foot">
+      <span class="due">À relancer aujourd'hui <b class="mono">20/11/2026</b></span>
+      <span class="c-actions"><button class="btn secondary sm">Modifier</button><button class="btn primary sm">Étape suivante</button></span>
+    </div>
+  </article>
+  <article class="contact calm">
+    <div class="c-top">
+      <div>
+        <p class="c-name">Hugo Martin</p>
+        <p class="c-co">Exemple &amp; Fils</p>
+      </div>
+      <span class="badge st-2">Contacté</span>
+    </div>
+    <p class="c-line">hugo@exemple.fr</p>
+    <div class="c-foot">
+      <span class="when mono">Relance le 27/11/2026</span>
+      <span class="c-actions"><button class="btn ghost sm">Modifier</button></span>
+    </div>
+  </article>
+</section>
+
+<section class="ds b" data-theme="dark" aria-labelledby="t-b">
+  <header class="ds-head">
+    <div class="ds-title"><h2 id="t-b">B. Cockpit</h2><button type="button" class="btn secondary sm theme-toggle" aria-pressed="true" data-light="Passer en clair" data-dark="Passer en sombre">Passer en clair</button></div>
+    <p class="lead">Graphite sombre et ambre. Dense, style tableau de bord, dates en chasse fixe.</p>
+  </header>
+
+  <h3>Couleurs</h3>
+  <ul class="swatches">
+    <li><span class="sw" style="background:var(--background)"></span><b>Fond</b><i>--background</i></li>
+    <li><span class="sw" style="background:var(--card)"></span><b>Carte</b><i>--card</i></li>
+    <li><span class="sw" style="background:var(--foreground)"></span><b>Texte</b><i>--foreground</i></li>
+    <li><span class="sw" style="background:var(--muted-foreground)"></span><b>Texte discret</b><i>--muted-foreground</i></li>
+    <li><span class="sw" style="background:var(--primary)"></span><b>Primaire</b><i>--primary</i></li>
+    <li><span class="sw" style="background:var(--secondary)"></span><b>Secondaire</b><i>--secondary</i></li>
+    <li><span class="sw" style="background:var(--border)"></span><b>Bordure</b><i>--border</i></li>
+    <li><span class="sw" style="background:var(--success)"></span><b>Succès (Gagné)</b><i>--success</i></li>
+    <li><span class="sw" style="background:var(--destructive)"></span><b>Alerte, suppression</b><i>--destructive</i></li>
+  </ul>
+
+  <h3>Typographie</h3>
+  <div class="type">
+    <p class="t-title">Relances du jour</p>
+    <p class="t-sub">Trois prospects à contacter</p>
+    <p class="t-body">Corps de texte : un paragraphe lisible pour les notes d'un échange, avec une longueur de ligne confortable.</p>
+    <p class="t-cap">Légende, aide de champ, libellé secondaire</p>
+    <p class="t-mono">Relance : 2026-11-20 · 06 12 34 56 78</p>
+    <p class="fonts">Titres et texte : IBM Plex Sans. Données : IBM Plex Mono.</p>
+  </div>
+
+  <h3>Boutons</h3>
+  <div class="row">
+    <button class="btn primary">Ajouter</button>
+    <button class="btn secondary">Modifier</button>
+    <button class="btn ghost">Annuler</button>
+    <button class="btn destructive">Supprimer</button>
+    <button class="btn primary" disabled>Désactivé</button>
+    <button class="btn primary is-focus" tabindex="-1">Focus</button>
+  </div>
+
+  <h3>Champs</h3>
+  <div class="fields">
+    <label class="field"><span>Nom</span><input type="text" value="Camille Durand" /></label>
+    <label class="field"><span>Société</span><input type="text" placeholder="Nom de la société" /></label>
+    <label class="field"><span>Email</span><input type="text" class="is-focus" value="camille@exemple.fr" /><small>État focus</small></label>
+    <label class="field err"><span>Téléphone</span><input type="text" value="06 12 34" aria-invalid="true" /><small class="msg">Numéro incomplet : 10 chiffres attendus.</small></label>
+    <label class="field"><span>Notes</span><textarea rows="2">Rappeler après la démo. Intéressée par l'offre mensuelle.</textarea></label>
+  </div>
+
+  <h3>Étapes</h3>
+  <div class="row">
+    <span class="badge st-1">Nouveau</span>
+    <span class="badge st-2">Contacté</span>
+    <span class="badge st-3">Réponse reçue</span>
+    <span class="badge st-4">RDV</span>
+    <span class="badge st-5">Gagné</span>
+    <span class="badge st-6">Perdu</span>
+  </div>
+
+  <h3>Carte de contact</h3>
+  <article class="contact">
+    <div class="c-top">
+      <div>
+        <p class="c-name">Camille Durand</p>
+        <p class="c-co">Atelier Exemple</p>
+      </div>
+      <span class="badge st-3">Réponse reçue</span>
+    </div>
+    <p class="c-line">camille@exemple.fr</p>
+    <p class="c-line mono">06 12 34 56 78</p>
+    <p class="c-notes">Rappeler après la démo. Intéressée par l'offre mensuelle.</p>
+    <div class="c-foot">
+      <span class="due">À relancer aujourd'hui <b class="mono">20/11/2026</b></span>
+      <span class="c-actions"><button class="btn secondary sm">Modifier</button><button class="btn primary sm">Étape suivante</button></span>
+    </div>
+  </article>
+  <article class="contact calm">
+    <div class="c-top">
+      <div>
+        <p class="c-name">Hugo Martin</p>
+        <p class="c-co">Exemple &amp; Fils</p>
+      </div>
+      <span class="badge st-2">Contacté</span>
+    </div>
+    <p class="c-line">hugo@exemple.fr</p>
+    <div class="c-foot">
+      <span class="when mono">Relance le 27/11/2026</span>
+      <span class="c-actions"><button class="btn ghost sm">Modifier</button></span>
+    </div>
+  </article>
+</section>
+
+<section class="ds c" data-theme="light" aria-labelledby="t-c">
+  <header class="ds-head">
+    <div class="ds-title"><h2 id="t-c">C. Atelier</h2><button type="button" class="btn secondary sm theme-toggle" aria-pressed="false" data-light="Passer en clair" data-dark="Passer en sombre">Passer en sombre</button></div>
+    <p class="lead">Gris froid et vermillon. Net, franc, angles resserrés.</p>
+  </header>
+
+  <h3>Couleurs</h3>
+  <ul class="swatches">
+    <li><span class="sw" style="background:var(--background)"></span><b>Fond</b><i>--background</i></li>
+    <li><span class="sw" style="background:var(--card)"></span><b>Carte</b><i>--card</i></li>
+    <li><span class="sw" style="background:var(--foreground)"></span><b>Texte</b><i>--foreground</i></li>
+    <li><span class="sw" style="background:var(--muted-foreground)"></span><b>Texte discret</b><i>--muted-foreground</i></li>
+    <li><span class="sw" style="background:var(--primary)"></span><b>Primaire</b><i>--primary</i></li>
+    <li><span class="sw" style="background:var(--secondary)"></span><b>Secondaire</b><i>--secondary</i></li>
+    <li><span class="sw" style="background:var(--border)"></span><b>Bordure</b><i>--border</i></li>
+    <li><span class="sw" style="background:var(--success)"></span><b>Succès (Gagné)</b><i>--success</i></li>
+    <li><span class="sw" style="background:var(--destructive)"></span><b>Alerte, suppression</b><i>--destructive</i></li>
+  </ul>
+
+  <h3>Typographie</h3>
+  <div class="type">
+    <p class="t-title">Relances du jour</p>
+    <p class="t-sub">Trois prospects à contacter</p>
+    <p class="t-body">Corps de texte : un paragraphe lisible pour les notes d'un échange, avec une longueur de ligne confortable.</p>
+    <p class="t-cap">Légende, aide de champ, libellé secondaire</p>
+    <p class="t-mono">Relance : 2026-11-20 · 06 12 34 56 78</p>
+    <p class="fonts">Titres : Bricolage Grotesque. Texte : Public Sans.</p>
+  </div>
+
+  <h3>Boutons</h3>
+  <div class="row">
+    <button class="btn primary">Ajouter</button>
+    <button class="btn secondary">Modifier</button>
+    <button class="btn ghost">Annuler</button>
+    <button class="btn destructive">Supprimer</button>
+    <button class="btn primary" disabled>Désactivé</button>
+    <button class="btn primary is-focus" tabindex="-1">Focus</button>
+  </div>
+
+  <h3>Champs</h3>
+  <div class="fields">
+    <label class="field"><span>Nom</span><input type="text" value="Camille Durand" /></label>
+    <label class="field"><span>Société</span><input type="text" placeholder="Nom de la société" /></label>
+    <label class="field"><span>Email</span><input type="text" class="is-focus" value="camille@exemple.fr" /><small>État focus</small></label>
+    <label class="field err"><span>Téléphone</span><input type="text" value="06 12 34" aria-invalid="true" /><small class="msg">Numéro incomplet : 10 chiffres attendus.</small></label>
+    <label class="field"><span>Notes</span><textarea rows="2">Rappeler après la démo. Intéressée par l'offre mensuelle.</textarea></label>
+  </div>
+
+  <h3>Étapes</h3>
+  <div class="row">
+    <span class="badge st-1">Nouveau</span>
+    <span class="badge st-2">Contacté</span>
+    <span class="badge st-3">Réponse reçue</span>
+    <span class="badge st-4">RDV</span>
+    <span class="badge st-5">Gagné</span>
+    <span class="badge st-6">Perdu</span>
+  </div>
+
+  <h3>Carte de contact</h3>
+  <article class="contact">
+    <div class="c-top">
+      <div>
+        <p class="c-name">Camille Durand</p>
+        <p class="c-co">Atelier Exemple</p>
+      </div>
+      <span class="badge st-3">Réponse reçue</span>
+    </div>
+    <p class="c-line">camille@exemple.fr</p>
+    <p class="c-line mono">06 12 34 56 78</p>
+    <p class="c-notes">Rappeler après la démo. Intéressée par l'offre mensuelle.</p>
+    <div class="c-foot">
+      <span class="due">À relancer aujourd'hui <b class="mono">20/11/2026</b></span>
+      <span class="c-actions"><button class="btn secondary sm">Modifier</button><button class="btn primary sm">Étape suivante</button></span>
+    </div>
+  </article>
+  <article class="contact calm">
+    <div class="c-top">
+      <div>
+        <p class="c-name">Hugo Martin</p>
+        <p class="c-co">Exemple &amp; Fils</p>
+      </div>
+      <span class="badge st-2">Contacté</span>
+    </div>
+    <p class="c-line">hugo@exemple.fr</p>
+    <div class="c-foot">
+      <span class="when mono">Relance le 27/11/2026</span>
+      <span class="c-actions"><button class="btn ghost sm">Modifier</button></span>
+    </div>
+  </article>
+</section>
+
+</main>
+<script>
+  document.querySelectorAll('.theme-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var ds = btn.closest('.ds');
+      var dark = ds.getAttribute('data-theme') !== 'dark';
+      ds.setAttribute('data-theme', dark ? 'dark' : 'light');
+      btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+      btn.textContent = dark ? btn.dataset.light : btn.dataset.dark;
+    });
+  });
+</script>
+</body>
+</html>
