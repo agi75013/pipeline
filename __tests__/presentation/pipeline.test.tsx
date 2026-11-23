@@ -1,6 +1,7 @@
 import { act, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { toast } from "sonner"
 import { Pipeline, type ActionsPipeline } from "@/presentation/pipeline"
 import type { Prospect } from "@/service/prospect-service"
 
@@ -28,6 +29,7 @@ const exemples = (): Prospect[] => [
 let actions: { [K in keyof ActionsPipeline]: ReturnType<typeof vi.fn> & ActionsPipeline[K] }
 
 beforeEach(() => {
+  toast.dismiss()
   actions = {
     changerEtape: vi.fn(async () => ({})),
     definirDateRelance: vi.fn(async () => ({})),
@@ -272,5 +274,75 @@ describe("synchronisation avec le serveur", () => {
     })
     expect(within(colonne("Gagné")).getByText("Arrivé du serveur")).toBeInTheDocument()
     expect(screen.queryByText("Paul Girard")).not.toBeInTheDocument()
+  })
+})
+
+describe("annuler depuis le message", () => {
+  // Le bouton « Annuler » du message le plus récent.
+  const annuler = async () => {
+    const boutons = await vi.waitFor(() => {
+      const trouves = within(document.querySelector("[data-sonner-toaster]") as HTMLElement).getAllByRole("button", { name: "Annuler" })
+      return trouves
+    })
+    await userEvent.click(boutons[0])
+  }
+
+  it("après un déplacement, remet le prospect dans sa colonne", async () => {
+    afficher()
+    carte("Paul Girard").focus()
+    await userEvent.keyboard("{Shift>}{ArrowRight}{/Shift}")
+    await annuler()
+    expect(actions.changerEtape).toHaveBeenLastCalledWith("paul", "Nouveau")
+    await vi.waitFor(() =>
+      expect(within(colonne("Nouveau")).getByText("Paul Girard")).toBeInTheDocument(),
+    )
+  })
+
+  it("après « relance faite », remet la date et le prospect dans le bandeau", async () => {
+    afficher()
+    await userEvent.click(screen.getByRole("button", { name: "Relance faite pour Alex Martin" }))
+    await annuler()
+    expect(actions.definirDateRelance).toHaveBeenLastCalledWith("alex", "2026-11-22")
+    expect(
+      await within(screen.getByRole("region", { name: /À relancer/ })).findByText("Alex Martin"),
+    ).toBeInTheDocument()
+  })
+
+  it("si l'annulation de « relance faite » échoue, le dit et garde l'état enregistré", async () => {
+    afficher()
+    await userEvent.click(screen.getByRole("button", { name: "Relance faite pour Alex Martin" }))
+    actions.definirDateRelance.mockResolvedValueOnce({ erreur: "Impossible d'enregistrer la date, réessayez." })
+    await annuler()
+    expect(await screen.findByText("Impossible d'enregistrer la date, réessayez.")).toBeInTheDocument()
+    expect(
+      within(screen.getByRole("region", { name: /À relancer/ })).queryByText("Alex Martin"),
+    ).not.toBeInTheDocument()
+  })
+
+  it("après un ajout rapide, supprime le prospect ajouté", async () => {
+    afficher()
+    await userEvent.click(within(colonne("RDV")).getByRole("button", { name: "Ajouter dans RDV" }))
+    const zone = within(colonne("RDV"))
+    await userEvent.type(zone.getByLabelText("Nom du prospect"), "Zoé")
+    await userEvent.type(zone.getByLabelText("Email ou téléphone"), "zoe@test.fr")
+    await userEvent.click(zone.getByRole("button", { name: "Ajouter" }))
+    await zone.findByText("Zoé")
+    await annuler()
+    expect(actions.supprimer).toHaveBeenCalledWith("nouveau-id")
+    await vi.waitFor(() => expect(zone.queryByText("Zoé")).not.toBeInTheDocument())
+  })
+
+  it("si l'annulation d'un ajout rapide échoue, le dit et garde le prospect", async () => {
+    actions.supprimer.mockResolvedValue({ erreur: "Impossible de supprimer, réessayez." })
+    afficher()
+    await userEvent.click(within(colonne("RDV")).getByRole("button", { name: "Ajouter dans RDV" }))
+    const zone = within(colonne("RDV"))
+    await userEvent.type(zone.getByLabelText("Nom du prospect"), "Zoé")
+    await userEvent.type(zone.getByLabelText("Email ou téléphone"), "zoe@test.fr")
+    await userEvent.click(zone.getByRole("button", { name: "Ajouter" }))
+    await zone.findByText("Zoé")
+    await annuler()
+    expect(await screen.findByText("Impossible de supprimer, réessayez.")).toBeInTheDocument()
+    expect(zone.getByText("Zoé")).toBeInTheDocument()
   })
 })

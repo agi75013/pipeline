@@ -84,7 +84,18 @@ export function Pipeline({
   const changerLocal = (id: string, champs: Partial<Prospect>) =>
     setProspects((liste) => liste.map((p) => (p.id === id ? { ...p, ...champs } : p)))
 
-  const deplacer = async (id: string, etape: Etape, { annulable = true } = {}) => {
+  // Annuler un déplacement : on repart de l'étape connue, sans relire une liste
+  // figée au moment du déplacement (elle montrerait la fiche déjà à sa place).
+  const annulerDeplacement = async (id: string, ancienne: Etape, nouvelle: Etape) => {
+    changerLocal(id, { etape: ancienne })
+    const r = await actions.changerEtape(id, ancienne)
+    if (r.erreur) {
+      changerLocal(id, { etape: nouvelle })
+      toast.error(r.erreur)
+    }
+  }
+
+  const deplacer = async (id: string, etape: Etape) => {
     const avant = prospects.find((p) => p.id === id)
     if (!avant || avant.etape === etape) return
     changerLocal(id, { etape })
@@ -94,11 +105,9 @@ export function Pipeline({
       toast.error(r.erreur)
       return
     }
-    if (annulable) {
-      toast(`${avant.nom} passe à « ${etape} »`, {
-        action: { label: "Annuler", onClick: () => deplacer(id, avant.etape, { annulable: false }) },
-      })
-    }
+    toast(`${avant.nom} passe à « ${etape} »`, {
+      action: { label: "Annuler", onClick: () => annulerDeplacement(id, avant.etape, etape) },
+    })
   }
 
   const { glisse, cible, saisir, refVolante, vientDeGlisser } = useGlisser({
@@ -124,7 +133,11 @@ export function Pipeline({
         label: "Annuler",
         onClick: async () => {
           changerLocal(id, { dateRelance: avant.dateRelance })
-          await actions.definirDateRelance(id, avant.dateRelance ?? "")
+          const retour = await actions.definirDateRelance(id, avant.dateRelance ?? "")
+          if (retour.erreur) {
+            changerLocal(id, { dateRelance: null })
+            toast.error(retour.erreur)
+          }
         },
       },
     })
@@ -138,16 +151,18 @@ export function Pipeline({
     }
     const id = r.id
     const { email, telephone } = analyserContact(contact)
-    setProspects((liste) => [
-      { id, nom: nom.trim(), societe: null, email: email || null, telephone: telephone || null, etape, dateRelance: null, notes: null, creeLe: new Date().toISOString() },
-      ...liste,
-    ])
+    const ajoute: Prospect = { id, nom: nom.trim(), societe: null, email: email || null, telephone: telephone || null, etape, dateRelance: null, notes: null, creeLe: new Date().toISOString() }
+    setProspects((liste) => [ajoute, ...liste])
     toast(`${nom.trim()} ajouté à « ${etape} »`, {
       action: {
         label: "Annuler",
         onClick: async () => {
           setProspects((liste) => liste.filter((p) => p.id !== id))
-          await actions.supprimer(id)
+          const retour = await actions.supprimer(id)
+          if (retour.erreur) {
+            setProspects((liste) => (liste.some((p) => p.id === id) ? liste : [ajoute, ...liste]))
+            toast.error(retour.erreur)
+          }
         },
       },
     })
