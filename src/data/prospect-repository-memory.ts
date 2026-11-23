@@ -17,5 +17,11 @@ export function createInMemoryProspectRepository(): ProspectRepository {
     async lister() {
       return [...prospects].reverse()
     },
+    async changerEtape(id, etape) {
+      const index = prospects.findIndex((p) => p.id === id)
+      if (index === -1) return null
+      prospects[index] = { ...prospects[index], etape }
+      return prospects[index]
+    },
   }
 }

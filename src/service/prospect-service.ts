@@ -1,6 +1,8 @@
-import type { Prospect, ProspectRepository } from "@/data/prospect"
+import { ETAPES } from "@/data/prospect"
+import type { Etape, Prospect, ProspectRepository } from "@/data/prospect"
 
 export type { Prospect, Etape } from "@/data/prospect"
+export { ETAPES }
 
 export type SaisieProspect = {
   nom?: string
@@ -14,6 +16,13 @@ export type ErreursSaisie = { nom?: string; contact?: string }
 export type ResultatCreation =
   | { ok: true; prospect: Prospect }
   | { ok: false; erreurs: ErreursSaisie }
+
+export type ResultatChangementEtape =
+  | { ok: true; prospect: Prospect }
+  | { ok: false; erreur: string }
+
+const etapeValide = (valeur: string): valeur is Etape =>
+  (ETAPES as readonly string[]).includes(valeur)
 
 const nettoyer = (valeur?: string) => {
   const texte = valeur?.trim()
@@ -48,6 +57,18 @@ export function createProspectService(depot: ProspectRepository) {
 
     listerProspects(): Promise<Prospect[]> {
       return depot.lister()
+    },
+
+    async changerEtape(
+      id: string,
+      etape: string,
+    ): Promise<ResultatChangementEtape> {
+      if (!etapeValide(etape)) {
+        return { ok: false, erreur: `Étape inconnue : ${etape}` }
+      }
+      const prospect = await depot.changerEtape(id, etape)
+      if (!prospect) return { ok: false, erreur: "Prospect introuvable" }
+      return { ok: true, prospect }
     },
   }
 }

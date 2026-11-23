@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { ETAPES } from "@/data/prospect"
 import { createInMemoryProspectRepository } from "@/data/prospect-repository-memory"
 import { createProspectService } from "@/service/prospect-service"
 
@@ -110,5 +111,62 @@ describe("refus de saisie", () => {
         contact: "Renseignez un email ou un téléphone",
       },
     })
+  })
+})
+
+describe("changer l'étape d'un prospect", () => {
+  async function serviceAvecCamille() {
+    const service = nouveauService()
+    const creation = await service.creerProspect({
+      nom: "Camille Durand",
+      email: "camille@exemple.fr",
+    })
+    if (!creation.ok) throw new Error("création impossible")
+    return { service, id: creation.prospect.id }
+  }
+
+  it("passe un prospect de Nouveau à RDV, la liste affiche RDV", async () => {
+    const { service, id } = await serviceAvecCamille()
+    const resultat = await service.changerEtape(id, "RDV")
+    expect(resultat.ok).toBe(true)
+    expect((await service.listerProspects())[0].etape).toBe("RDV")
+  })
+
+  it("accepte le retour de Gagné à Contacté", async () => {
+    const { service, id } = await serviceAvecCamille()
+    await service.changerEtape(id, "Gagné")
+    const resultat = await service.changerEtape(id, "Contacté")
+    expect(resultat.ok).toBe(true)
+    expect((await service.listerProspects())[0].etape).toBe("Contacté")
+  })
+
+  it("accepte le passage libre entre les 6 étapes, dans tous les sens", async () => {
+    const { service, id } = await serviceAvecCamille()
+    for (const depart of ETAPES) {
+      for (const arrivee of ETAPES) {
+        await service.changerEtape(id, depart)
+        const resultat = await service.changerEtape(id, arrivee)
+        expect(resultat.ok).toBe(true)
+        expect((await service.listerProspects())[0].etape).toBe(arrivee)
+      }
+    }
+  })
+
+  it("refuse une étape hors des 6 et laisse l'étape inchangée", async () => {
+    const { service, id } = await serviceAvecCamille()
+    const resultat = await service.changerEtape(id, "Archivé")
+    expect(resultat).toEqual({ ok: false, erreur: expect.any(String) })
+    expect((await service.listerProspects())[0].etape).toBe("Nouveau")
+  })
+
+  it("refuse une étape vide", async () => {
+    const { service, id } = await serviceAvecCamille()
+    expect((await service.changerEtape(id, "")).ok).toBe(false)
+  })
+
+  it("signale un prospect introuvable", async () => {
+    const service = nouveauService()
+    const resultat = await service.changerEtape("inconnu", "RDV")
+    expect(resultat).toEqual({ ok: false, erreur: expect.any(String) })
   })
 })

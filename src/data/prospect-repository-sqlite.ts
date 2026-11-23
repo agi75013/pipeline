@@ -1,4 +1,4 @@
-import { createClient } from "@libsql/client"
+import { createClient, type Row } from "@libsql/client"
 import { ETAPES } from "@/data/prospect"
 import type { Etape, Prospect, ProspectRepository } from "@/data/prospect"
 
@@ -18,6 +18,18 @@ CREATE TABLE IF NOT EXISTS prospects (
 
 const texteOuNull = (valeur: unknown) =>
   valeur === null || valeur === undefined ? null : String(valeur)
+
+const versProspect = (ligne: Row): Prospect => ({
+  id: String(ligne.id),
+  nom: String(ligne.nom),
+  societe: texteOuNull(ligne.societe),
+  email: texteOuNull(ligne.email),
+  telephone: texteOuNull(ligne.telephone),
+  etape: String(ligne.etape) as Etape,
+  dateRelance: texteOuNull(ligne.date_relance),
+  notes: texteOuNull(ligne.notes),
+  creeLe: String(ligne.cree_le),
+})
 
 export type SqliteProspectRepository = ProspectRepository & {
   fermer(): Promise<void>
@@ -61,17 +73,20 @@ export async function createSqliteProspectRepository(
       const resultat = await client.execute(
         "SELECT * FROM prospects ORDER BY cree_le DESC, rowid DESC",
       )
-      return resultat.rows.map((ligne) => ({
-        id: String(ligne.id),
-        nom: String(ligne.nom),
-        societe: texteOuNull(ligne.societe),
-        email: texteOuNull(ligne.email),
-        telephone: texteOuNull(ligne.telephone),
-        etape: String(ligne.etape) as Etape,
-        dateRelance: texteOuNull(ligne.date_relance),
-        notes: texteOuNull(ligne.notes),
-        creeLe: String(ligne.cree_le),
-      }))
+      return resultat.rows.map(versProspect)
+    },
+
+    async changerEtape(id, etape) {
+      const maj = await client.execute({
+        sql: "UPDATE prospects SET etape = ? WHERE id = ?",
+        args: [etape, id],
+      })
+      if (maj.rowsAffected === 0) return null
+      const resultat = await client.execute({
+        sql: "SELECT * FROM prospects WHERE id = ?",
+        args: [id],
+      })
+      return versProspect(resultat.rows[0])
     },
 
     async fermer() {

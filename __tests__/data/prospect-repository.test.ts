@@ -63,6 +63,30 @@ describe.each(depots)("dépôt de prospects (%s)", (_nom, creer) => {
     const depot = await creer()
     expect(await depot.lister()).toEqual([])
   })
+
+  it("change l'étape d'un prospect et renvoie le prospect mis à jour", async () => {
+    const depot = await creer()
+    const ajoute = await depot.ajouter(camille)
+    const modifie = await depot.changerEtape(ajoute.id, "RDV")
+    expect(modifie).toMatchObject({ id: ajoute.id, etape: "RDV" })
+    expect((await depot.lister())[0].etape).toBe("RDV")
+  })
+
+  it("ne touche pas aux autres prospects", async () => {
+    const depot = await creer()
+    const a = await depot.ajouter({ ...camille, nom: "A" })
+    await depot.ajouter({ ...camille, nom: "B" })
+    await depot.changerEtape(a.id, "Gagné")
+    const etapes = Object.fromEntries(
+      (await depot.lister()).map((p) => [p.nom, p.etape]),
+    )
+    expect(etapes).toEqual({ A: "Gagné", B: "Nouveau" })
+  })
+
+  it("renvoie null pour un id inconnu", async () => {
+    const depot = await creer()
+    expect(await depot.changerEtape("inconnu", "RDV")).toBeNull()
+  })
 })
 
 describe("dépôt SQLite", () => {
@@ -76,6 +100,28 @@ describe("dépôt SQLite", () => {
     const liste = await apres.lister()
     await apres.fermer()
     expect(liste.map((p) => p.nom)).toEqual(["Camille Durand"])
+  })
+
+  it("conserve la nouvelle étape après redémarrage", async () => {
+    const url = urlTemporaire()
+    const avant = await createSqliteProspectRepository(url)
+    const ajoute = await avant.ajouter(camille)
+    await avant.changerEtape(ajoute.id, "RDV")
+    await avant.fermer()
+
+    const apres = await createSqliteProspectRepository(url)
+    const liste = await apres.lister()
+    await apres.fermer()
+    expect(liste[0].etape).toBe("RDV")
+  })
+
+  it("refuse un changement vers une étape hors des 6 (contrainte de la base)", async () => {
+    const depot = await createSqliteProspectRepository(urlTemporaire())
+    const ajoute = await depot.ajouter(camille)
+    await expect(
+      depot.changerEtape(ajoute.id, "Inconnue" as Etape),
+    ).rejects.toThrow()
+    expect((await depot.lister())[0].etape).toBe("Nouveau")
   })
 
   it("refuse une étape hors des 6 prévues (contrainte de la base)", async () => {

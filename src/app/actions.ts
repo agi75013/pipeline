@@ -9,6 +9,23 @@ const texte = (formData: FormData, cle: string) => {
   return typeof valeur === "string" ? valeur : ""
 }
 
+export type EtatChangementEtape = { erreur?: string }
+
+export async function changerEtapeProspect(
+  id: string,
+  etape: string,
+): Promise<EtatChangementEtape> {
+  try {
+    const resultat = await obtenirServiceProspects().changerEtape(id, etape)
+    if (!resultat.ok) return { erreur: resultat.erreur }
+  } catch (erreur) {
+    console.error("Échec du changement d'étape", erreur)
+    return { erreur: "Impossible de changer l'étape, réessayez." }
+  }
+  revalidatePath("/")
+  return {}
+}
+
 export async function ajouterProspect(
   _etat: EtatFormulaire,
   formData: FormData,
