@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { ETAPES } from "@/data/prospect"
 import { createInMemoryProspectRepository } from "@/data/prospect-repository-memory"
 import { createProspectService } from "@/service/prospect-service"
@@ -162,6 +162,19 @@ describe("changer l'étape d'un prospect", () => {
   it("refuse une étape vide", async () => {
     const { service, id } = await serviceAvecCamille()
     expect((await service.changerEtape(id, "")).ok).toBe(false)
+  })
+
+  it("refuse un id vide ou qui n'est pas du texte, sans appeler la base", async () => {
+    const depot = {
+      ...createInMemoryProspectRepository(),
+      changerEtape: vi.fn(),
+    }
+    const service = createProspectService(depot)
+    for (const id of ["", "   ", 42, null, undefined, { a: 1 }]) {
+      const resultat = await service.changerEtape(id as unknown as string, "RDV")
+      expect(resultat).toEqual({ ok: false, erreur: "Prospect introuvable" })
+    }
+    expect(depot.changerEtape).not.toHaveBeenCalled()
   })
 
   it("signale un prospect introuvable", async () => {

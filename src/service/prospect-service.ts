@@ -66,6 +66,9 @@ export function createProspectService(depot: ProspectRepository) {
       if (!etapeValide(etape)) {
         return { ok: false, erreur: `Étape inconnue : ${etape}` }
       }
+      if (typeof id !== "string" || !id.trim()) {
+        return { ok: false, erreur: "Prospect introuvable" }
+      }
       const prospect = await depot.changerEtape(id, etape)
       if (!prospect) return { ok: false, erreur: "Prospect introuvable" }
       return { ok: true, prospect }
