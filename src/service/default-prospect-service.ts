@@ -25,6 +25,7 @@ export function obtenirServiceProspects(): ProspectService {
         (await obtenirDepot()).definirDateRelance(id, date),
       modifier: async (id, donnees) =>
         (await obtenirDepot()).modifier(id, donnees),
+      supprimer: async (id) => (await obtenirDepot()).supprimer(id),
     })
   }
   return service

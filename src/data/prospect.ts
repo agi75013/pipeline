@@ -52,4 +52,6 @@ export interface ProspectRepository {
   definirDateRelance(id: string, date: string | null): Promise<Prospect | null>
   /** Remplace les informations du prospect. Null si l'id est inconnu. */
   modifier(id: string, donnees: DonneesProspect): Promise<Prospect | null>
+  /** True si le prospect existait et a été supprimé. */
+  supprimer(id: string): Promise<boolean>
 }

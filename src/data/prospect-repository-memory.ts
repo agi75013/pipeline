@@ -34,5 +34,11 @@ export function createInMemoryProspectRepository(): ProspectRepository {
       const { nom, societe, email, telephone, dateRelance, notes } = donnees
       return mettreAJour(id, { nom, societe, email, telephone, dateRelance, notes })
     },
+    async supprimer(id) {
+      const index = prospects.findIndex((p) => p.id === id)
+      if (index === -1) return false
+      prospects.splice(index, 1)
+      return true
+    },
   }
 }

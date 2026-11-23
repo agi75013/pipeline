@@ -36,6 +36,8 @@ export type ResultatModification =
   | { ok: true; prospect: Prospect }
   | { ok: false; erreur: string }
 
+export type ResultatSuppression = { ok: true } | { ok: false; erreur: string }
+
 export type ResultatChangementEtape =
   | { ok: true; prospect: Prospect }
   | { ok: false; erreur: string }
@@ -139,6 +141,12 @@ export function createProspectService(
       const prospect = await depot.definirDateRelance(id, date)
       if (!prospect) return { ok: false, erreur: INTROUVABLE }
       return { ok: true, prospect }
+    },
+
+    async supprimerProspect(id: string): Promise<ResultatSuppression> {
+      if (!idValide(id)) return { ok: false, erreur: INTROUVABLE }
+      const supprime = await depot.supprimer(id)
+      return supprime ? { ok: true } : { ok: false, erreur: INTROUVABLE }
     },
 
     /** Relance due : date de relance aujourd'hui ou antérieure. Plus ancienne d'abord. */

@@ -411,3 +411,38 @@ describe("modifier un prospect", () => {
     })
   })
 })
+
+describe("supprimer un prospect", () => {
+  it("le retire de la liste et de la liste des relances", async () => {
+    const service = createProspectService(createInMemoryProspectRepository(), {
+      aujourdhui: () => "2026-11-23",
+    })
+    const creation = await service.creerProspect({ nom: "Camille", email: "c@exemple.fr" })
+    const autre = await service.creerProspect({ nom: "Alex", email: "a@exemple.fr" })
+    if (!creation.ok || !autre.ok) throw new Error("création impossible")
+    await service.definirDateRelance(creation.prospect.id, "2026-11-22")
+    await service.definirDateRelance(autre.prospect.id, "2026-11-22")
+
+    expect(await service.supprimerProspect(creation.prospect.id)).toEqual({ ok: true })
+    expect((await service.listerProspects()).map((p) => p.nom)).toEqual(["Alex"])
+    expect((await service.listerARelancer()).map((p) => p.nom)).toEqual(["Alex"])
+  })
+
+  it("signale un prospect introuvable", async () => {
+    const service = nouveauService()
+    expect(await service.supprimerProspect("inconnu")).toEqual({
+      ok: false,
+      erreur: "Prospect introuvable",
+    })
+  })
+
+  it("refuse un id vide ou qui n'est pas du texte, sans appeler la base", async () => {
+    const depot = { ...createInMemoryProspectRepository(), supprimer: vi.fn() }
+    const service = createProspectService(depot)
+    for (const id of ["", "   ", 42, null, undefined]) {
+      const resultat = await service.supprimerProspect(id as unknown as string)
+      expect(resultat).toEqual({ ok: false, erreur: "Prospect introuvable" })
+    }
+    expect(depot.supprimer).not.toHaveBeenCalled()
+  })
+})

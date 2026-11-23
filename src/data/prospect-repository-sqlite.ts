@@ -121,6 +121,14 @@ export async function createSqliteProspectRepository(
       return relire(id)
     },
 
+    async supprimer(id) {
+      const resultat = await client.execute({
+        sql: "DELETE FROM prospects WHERE id = ?",
+        args: [id],
+      })
+      return resultat.rowsAffected > 0
+    },
+
     async fermer() {
       client.close()
     },

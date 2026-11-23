@@ -159,3 +159,23 @@ export async function modifierProspect(
   revalidatePath("/")
   return { succes: true }
 }
+
+const suppressionSchema = z.object({ id: z.string().trim().min(1) })
+
+export async function supprimerProspect(
+  id: string,
+): Promise<EtatChangementEtape> {
+  const entree = suppressionSchema.safeParse({ id })
+  if (!entree.success) return { erreur: "Prospect invalide." }
+  try {
+    const resultat = await obtenirServiceProspects().supprimerProspect(
+      entree.data.id,
+    )
+    if (!resultat.ok) return { erreur: resultat.erreur }
+  } catch (erreur) {
+    console.error("Échec de la suppression d'un prospect", erreur)
+    return { erreur: "Impossible de supprimer, réessayez." }
+  }
+  revalidatePath("/")
+  return {}
+}

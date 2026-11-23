@@ -4,6 +4,7 @@ const creerProspect = vi.fn()
 const changerEtape = vi.fn()
 const definirDateRelance = vi.fn()
 const modifierProspect = vi.fn()
+const supprimerProspect = vi.fn()
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
 vi.mock("@/service/default-prospect-service", () => ({
@@ -12,6 +13,7 @@ vi.mock("@/service/default-prospect-service", () => ({
     changerEtape,
     definirDateRelance,
     modifierProspect,
+    supprimerProspect,
   }),
 }))
 
@@ -20,6 +22,7 @@ import {
   changerEtapeProspect,
   definirDateRelanceProspect,
   modifierProspect as modifierProspectAction,
+  supprimerProspect as supprimerProspectAction,
 } from "@/app/actions"
 
 const formulaire = () => {
@@ -287,5 +290,39 @@ describe("action de modification", () => {
       expect(etat.erreurGenerale).toBe("Saisie invalide, réessayez.")
     }
     expect(modifierProspect).not.toHaveBeenCalled()
+  })
+})
+
+describe("action de suppression", () => {
+  beforeEach(() => {
+    supprimerProspect.mockReset()
+  })
+
+  it("transmet l'id au service et renvoie un état vide", async () => {
+    supprimerProspect.mockResolvedValue({ ok: true })
+    expect(await supprimerProspectAction(" 42 ")).toEqual({})
+    expect(supprimerProspect).toHaveBeenCalledWith("42")
+  })
+
+  it("renvoie l'erreur du service quand il refuse", async () => {
+    supprimerProspect.mockResolvedValue({ ok: false, erreur: "Prospect introuvable" })
+    expect(await supprimerProspectAction("42")).toEqual({
+      erreur: "Prospect introuvable",
+    })
+  })
+
+  it("renvoie un message clair si la base échoue", async () => {
+    supprimerProspect.mockRejectedValue(new Error("SQLITE_BUSY"))
+    expect(await supprimerProspectAction("42")).toEqual({
+      erreur: "Impossible de supprimer, réessayez.",
+    })
+  })
+
+  it("refuse un id vide ou qui n'est pas du texte sans appeler le service", async () => {
+    for (const id of ["", "   ", 42, null, undefined, { a: 1 }]) {
+      const etat = await supprimerProspectAction(id as unknown as string)
+      expect(etat.erreur).toBeTruthy()
+    }
+    expect(supprimerProspect).not.toHaveBeenCalled()
   })
 })

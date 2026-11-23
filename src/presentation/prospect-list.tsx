@@ -8,6 +8,10 @@ import {
   type ActionModification,
 } from "@/presentation/prospect-edit-dialog"
 import {
+  ProspectDeleteDialog,
+  type ActionSuppression,
+} from "@/presentation/prospect-delete-dialog"
+import {
   Table,
   TableBody,
   TableCell,
@@ -22,11 +26,13 @@ export function ProspectList({
   changerEtape,
   definirDateRelance,
   modifier,
+  supprimer,
 }: {
   prospects: Prospect[]
   changerEtape: ActionEtape
   definirDateRelance: ActionDateRelance
   modifier: ActionModification
+  supprimer: ActionSuppression
 }) {
   if (prospects.length === 0) {
     return (
@@ -71,7 +77,10 @@ export function ProspectList({
               />
             </TableCell>
             <TableCell>
-              <ProspectEditDialog prospect={p} action={modifier} />
+              <div className="flex gap-2">
+                <ProspectEditDialog prospect={p} action={modifier} />
+                <ProspectDeleteDialog id={p.id} nom={p.nom} action={supprimer} />
+              </div>
             </TableCell>
           </TableRow>
         ))}

@@ -61,3 +61,18 @@ describe("modification via la base configurée", () => {
     expect(liste.find((p) => p.id === creation.prospect.id)?.societe).toBe("Acme")
   })
 })
+
+describe("suppression via la base configurée", () => {
+  it("supprime un prospect de la base", async () => {
+    process.env.DATABASE_URL = ":memory:"
+    const service = obtenirServiceProspects()
+    const creation = await service.creerProspect({
+      nom: "ASupprimer",
+      email: "s@exemple.fr",
+    })
+    if (!creation.ok) throw new Error("création impossible")
+    expect((await service.supprimerProspect(creation.prospect.id)).ok).toBe(true)
+    const ids = (await service.listerProspects()).map((p) => p.id)
+    expect(ids).not.toContain(creation.prospect.id)
+  })
+})

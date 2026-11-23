@@ -18,7 +18,8 @@ const camille: Prospect = {
 const changerEtape = vi.fn(async () => ({}))
 const definirDateRelance = vi.fn(async () => ({}))
 const modifier = vi.fn(async () => ({}))
-const actions = { changerEtape, definirDateRelance, modifier }
+const supprimer = vi.fn(async () => ({}))
+const actions = { changerEtape, definirDateRelance, modifier, supprimer }
 
 describe("liste des prospects", () => {
   it("affiche le nom, la société, le contact et l'étape", () => {
@@ -53,6 +54,13 @@ describe("liste des prospects", () => {
     render(<ProspectList prospects={[camille]} {...actions} />)
     expect(
       screen.getByRole("button", { name: "Modifier Camille Durand" }),
+    ).toBeInTheDocument()
+  })
+
+  it("propose de supprimer chaque prospect", () => {
+    render(<ProspectList prospects={[camille]} {...actions} />)
+    expect(
+      screen.getByRole("button", { name: "Supprimer Camille Durand" }),
     ).toBeInTheDocument()
   })
 

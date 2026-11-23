@@ -10,6 +10,7 @@ import {
   changerEtapeProspect,
   definirDateRelanceProspect,
   modifierProspect,
+  supprimerProspect,
 } from "@/app/actions"
 
 async function Prospects() {
@@ -21,6 +22,7 @@ async function Prospects() {
       changerEtape={changerEtapeProspect}
       definirDateRelance={definirDateRelanceProspect}
       modifier={modifierProspect}
+      supprimer={supprimerProspect}
     />
   )
 }
