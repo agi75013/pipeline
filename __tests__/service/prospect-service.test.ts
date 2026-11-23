@@ -446,3 +446,76 @@ describe("supprimer un prospect", () => {
     expect(depot.supprimer).not.toHaveBeenCalled()
   })
 })
+
+describe("créer un prospect complet ou dans une étape", () => {
+  it("enregistre date de relance et notes à la création", async () => {
+    const service = nouveauService()
+    const resultat = await service.creerProspect({
+      nom: "Camille",
+      email: "c@exemple.fr",
+      dateRelance: "2026-12-01",
+      notes: "  Rappeler  ",
+    })
+    expect(resultat.ok).toBe(true)
+    expect((await service.listerProspects())[0]).toMatchObject({
+      dateRelance: "2026-12-01",
+      notes: "Rappeler",
+    })
+  })
+
+  it("refuse une date de relance impossible à la création", async () => {
+    const service = nouveauService()
+    const resultat = await service.creerProspect({
+      nom: "Camille",
+      email: "c@exemple.fr",
+      dateRelance: "2026-02-30",
+    })
+    expect(resultat).toEqual({
+      ok: false,
+      erreurs: { dateRelance: "Date de relance invalide" },
+    })
+  })
+
+  it("crée directement dans l'étape demandée", async () => {
+    const service = nouveauService()
+    await service.creerProspect({ nom: "Camille", email: "c@exemple.fr" }, { etape: "RDV" })
+    expect((await service.listerProspects())[0].etape).toBe("RDV")
+  })
+
+  it("refuse une étape hors des 6 à la création", async () => {
+    const service = nouveauService()
+    const resultat = await service.creerProspect(
+      { nom: "Camille", email: "c@exemple.fr" },
+      { etape: "Archivé" },
+    )
+    expect(resultat).toEqual({ ok: false, erreurs: { etape: expect.any(String) } })
+    expect(await service.listerProspects()).toEqual([])
+  })
+
+  it("ajout rapide : un nom et un contact unique, email ou téléphone", async () => {
+    const service = nouveauService()
+    await service.creerProspectRapide("Contacté", "Zoé", "zoe@test.fr")
+    await service.creerProspectRapide("RDV", "Léo", "06 11 22 33 44")
+    const [leo, zoe] = await service.listerProspects()
+    expect(zoe).toMatchObject({ nom: "Zoé", email: "zoe@test.fr", telephone: null, etape: "Contacté" })
+    expect(leo).toMatchObject({ nom: "Léo", email: null, telephone: "06 11 22 33 44", etape: "RDV" })
+  })
+
+  it("ajout rapide : refuse sans nom ou sans contact", async () => {
+    const service = nouveauService()
+    expect(await service.creerProspectRapide("Nouveau", "", "")).toEqual({
+      ok: false,
+      erreurs: {
+        nom: "Le nom est obligatoire",
+        contact: "Renseignez un email ou un téléphone",
+      },
+    })
+  })
+
+  it("donne la date du jour de son horloge", () => {
+    const service = createProspectService(createInMemoryProspectRepository(), {
+      aujourdhui: () => "2026-11-23",
+    })
+    expect(service.aujourdhui()).toBe("2026-11-23")
+  })
+})

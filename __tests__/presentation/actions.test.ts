@@ -5,6 +5,7 @@ const changerEtape = vi.fn()
 const definirDateRelance = vi.fn()
 const modifierProspect = vi.fn()
 const supprimerProspect = vi.fn()
+const creerProspectRapide = vi.fn()
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
 vi.mock("@/service/default-prospect-service", () => ({
@@ -14,6 +15,7 @@ vi.mock("@/service/default-prospect-service", () => ({
     definirDateRelance,
     modifierProspect,
     supprimerProspect,
+    creerProspectRapide,
   }),
 }))
 
@@ -23,6 +25,7 @@ import {
   definirDateRelanceProspect,
   modifierProspect as modifierProspectAction,
   supprimerProspect as supprimerProspectAction,
+  ajoutRapideProspect,
 } from "@/app/actions"
 
 const formulaire = () => {
@@ -46,9 +49,35 @@ describe("action d'ajout", () => {
     expect(etat.valeurs?.nom).toBe("Camille Durand")
   })
 
-  it("renvoie un état vide quand l'ajout réussit", async () => {
+  it("signale le succès quand l'ajout réussit", async () => {
     creerProspect.mockResolvedValue({ ok: true, prospect: {} })
-    expect(await ajouterProspect({}, formulaire())).toEqual({})
+    expect(await ajouterProspect({}, formulaire())).toEqual({ succes: true })
+  })
+
+  it("transmet l'étape choisie, la date de relance et les notes", async () => {
+    creerProspect.mockResolvedValue({ ok: true, prospect: {} })
+    const formData = formulaire()
+    formData.set("etape", "RDV")
+    formData.set("dateRelance", "2026-12-01")
+    formData.set("notes", " Rappeler ")
+    await ajouterProspect({}, formData)
+    expect(creerProspect).toHaveBeenCalledWith(
+      expect.objectContaining({ dateRelance: "2026-12-01", notes: "Rappeler" }),
+      { etape: "RDV" },
+    )
+  })
+
+  it("refuse une étape hors des 6 ou une date mal formée sans appeler le service", async () => {
+    const etapeFausse = formulaire()
+    etapeFausse.set("etape", "Archivé")
+    const dateFausse = formulaire()
+    dateFausse.set("dateRelance", "01/12/2026")
+    for (const formData of [etapeFausse, dateFausse]) {
+      expect((await ajouterProspect({}, formData)).erreurGenerale).toBe(
+        "Saisie invalide, réessayez.",
+      )
+    }
+    expect(creerProspect).not.toHaveBeenCalled()
   })
 })
 
@@ -117,12 +146,17 @@ describe("validation des entrées de ajouterProspect (zod)", () => {
     formData.set("email", " c@exemple.fr ")
     formData.set("telephone", "")
     await ajouterProspect({}, formData)
-    expect(creerProspect).toHaveBeenCalledWith({
-      nom: "Camille Durand",
-      societe: "Acme",
-      email: "c@exemple.fr",
-      telephone: "",
-    })
+    expect(creerProspect).toHaveBeenCalledWith(
+      {
+        nom: "Camille Durand",
+        societe: "Acme",
+        email: "c@exemple.fr",
+        telephone: "",
+        dateRelance: "",
+        notes: "",
+      },
+      { etape: "Nouveau" },
+    )
   })
 
   it("traite un champ absent comme vide", async () => {
@@ -130,12 +164,17 @@ describe("validation des entrées de ajouterProspect (zod)", () => {
     const formData = new FormData()
     formData.set("nom", "Camille")
     await ajouterProspect({}, formData)
-    expect(creerProspect).toHaveBeenCalledWith({
-      nom: "Camille",
-      societe: "",
-      email: "",
-      telephone: "",
-    })
+    expect(creerProspect).toHaveBeenCalledWith(
+      {
+        nom: "Camille",
+        societe: "",
+        email: "",
+        telephone: "",
+        dateRelance: "",
+        notes: "",
+      },
+      { etape: "Nouveau" },
+    )
   })
 
   it("refuse un champ qui n'est pas du texte (fichier) sans appeler le service", async () => {
@@ -324,5 +363,44 @@ describe("action de suppression", () => {
       expect(etat.erreur).toBeTruthy()
     }
     expect(supprimerProspect).not.toHaveBeenCalled()
+  })
+})
+
+describe("action d'ajout rapide dans une colonne", () => {
+  beforeEach(() => {
+    creerProspectRapide.mockReset()
+  })
+
+  it("transmet étape, nom et contact nettoyés, et renvoie l'id créé", async () => {
+    creerProspectRapide.mockResolvedValue({ ok: true, prospect: { id: "99" } })
+    expect(await ajoutRapideProspect("RDV", " Zoé ", " zoe@test.fr ")).toEqual({ id: "99" })
+    expect(creerProspectRapide).toHaveBeenCalledWith("RDV", "Zoé", "zoe@test.fr")
+  })
+
+  it("renvoie les erreurs de saisie du service", async () => {
+    creerProspectRapide.mockResolvedValue({
+      ok: false,
+      erreurs: { nom: "Le nom est obligatoire" },
+    })
+    expect(await ajoutRapideProspect("RDV", "", "x")).toEqual({
+      erreurs: { nom: "Le nom est obligatoire" },
+    })
+  })
+
+  it("renvoie un message clair si la base échoue", async () => {
+    creerProspectRapide.mockRejectedValue(new Error("SQLITE_BUSY"))
+    expect(await ajoutRapideProspect("RDV", "Zoé", "z@t.fr")).toEqual({
+      erreurGenerale: "Impossible d'enregistrer, réessayez.",
+    })
+  })
+
+  it("refuse une étape hors des 6 ou des valeurs qui ne sont pas du texte sans appeler le service", async () => {
+    const etats = [
+      await ajoutRapideProspect("Archivé", "Zoé", "z@t.fr"),
+      await ajoutRapideProspect("RDV", 42 as unknown as string, "z@t.fr"),
+      await ajoutRapideProspect("RDV", "Zoé", null as unknown as string),
+    ]
+    for (const etat of etats) expect(etat.erreurGenerale).toBeTruthy()
+    expect(creerProspectRapide).not.toHaveBeenCalled()
   })
 })
