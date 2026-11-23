@@ -26,3 +26,53 @@ describe("service de prospects câblé sur la base", () => {
     expect(liste.find((p) => p.id === creation.prospect.id)?.etape).toBe("RDV")
   })
 })
+
+describe("relances via la base configurée", () => {
+  it("liste un prospect dont la relance est passée", async () => {
+    process.env.DATABASE_URL = ":memory:"
+    const service = obtenirServiceProspects()
+    const creation = await service.creerProspect({
+      nom: "Relance",
+      email: "r@exemple.fr",
+    })
+    if (!creation.ok) throw new Error("création impossible")
+    await service.definirDateRelance(creation.prospect.id, "2000-01-01")
+    const noms = (await service.listerARelancer()).map((p) => p.nom)
+    expect(noms).toContain("Relance")
+  })
+})
+
+describe("modification via la base configurée", () => {
+  it("modifie la société d'un prospect", async () => {
+    process.env.DATABASE_URL = ":memory:"
+    const service = obtenirServiceProspects()
+    const creation = await service.creerProspect({
+      nom: "Modif",
+      email: "m@exemple.fr",
+    })
+    if (!creation.ok) throw new Error("création impossible")
+    const resultat = await service.modifierProspect(creation.prospect.id, {
+      nom: "Modif",
+      societe: "Acme",
+      email: "m@exemple.fr",
+    })
+    expect(resultat.ok).toBe(true)
+    const liste = await service.listerProspects()
+    expect(liste.find((p) => p.id === creation.prospect.id)?.societe).toBe("Acme")
+  })
+})
+
+describe("suppression via la base configurée", () => {
+  it("supprime un prospect de la base", async () => {
+    process.env.DATABASE_URL = ":memory:"
+    const service = obtenirServiceProspects()
+    const creation = await service.creerProspect({
+      nom: "ASupprimer",
+      email: "s@exemple.fr",
+    })
+    if (!creation.ok) throw new Error("création impossible")
+    expect((await service.supprimerProspect(creation.prospect.id)).ok).toBe(true)
+    const ids = (await service.listerProspects()).map((p) => p.id)
+    expect(ids).not.toContain(creation.prospect.id)
+  })
+})

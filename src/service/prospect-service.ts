@@ -1,5 +1,6 @@
 import { ETAPES } from "@/data/prospect"
 import type { Etape, Prospect, ProspectRepository } from "@/data/prospect"
+import { horlogeSysteme, type Horloge } from "@/service/horloge"
 
 export type { Prospect, Etape } from "@/data/prospect"
 export { ETAPES }
@@ -13,9 +14,29 @@ export type SaisieProspect = {
 
 export type ErreursSaisie = { nom?: string; contact?: string }
 
+export type SaisieModification = SaisieProspect & {
+  dateRelance?: string
+  notes?: string
+}
+
+export type ErreursModification = ErreursSaisie & {
+  dateRelance?: string
+  prospect?: string
+}
+
+export type ResultatEdition =
+  | { ok: true; prospect: Prospect }
+  | { ok: false; erreurs: ErreursModification }
+
 export type ResultatCreation =
   | { ok: true; prospect: Prospect }
   | { ok: false; erreurs: ErreursSaisie }
+
+export type ResultatModification =
+  | { ok: true; prospect: Prospect }
+  | { ok: false; erreur: string }
+
+export type ResultatSuppression = { ok: true } | { ok: false; erreur: string }
 
 export type ResultatChangementEtape =
   | { ok: true; prospect: Prospect }
@@ -29,29 +50,66 @@ const nettoyer = (valeur?: string) => {
   return texte ? texte : null
 }
 
-export function createProspectService(depot: ProspectRepository) {
+const idValide = (id: unknown): id is string =>
+  typeof id === "string" && id.trim() !== ""
+
+/** Date réelle au format YYYY-MM-DD (refuse 2026-02-30). */
+const dateValide = (valeur: unknown): valeur is string => {
+  if (typeof valeur !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(valeur)) {
+    return false
+  }
+  const date = new Date(`${valeur}T00:00:00Z`)
+  return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(valeur)
+}
+
+const INTROUVABLE = "Prospect introuvable"
+
+/** Règles communes à l'ajout et à la modification : nom et contact obligatoires. */
+function validerIdentite(saisie: SaisieProspect) {
+  const nom = nettoyer(saisie.nom)
+  const email = nettoyer(saisie.email)
+  const telephone = nettoyer(saisie.telephone)
+  const erreurs: ErreursSaisie = {}
+  if (!nom) erreurs.nom = "Le nom est obligatoire"
+  if (!email && !telephone) {
+    erreurs.contact = "Renseignez un email ou un téléphone"
+  }
+  const identite = { nom: nom ?? "", societe: nettoyer(saisie.societe), email, telephone }
+  return { identite, erreurs }
+}
+
+export function createProspectService(
+  depot: ProspectRepository,
+  horloge: Horloge = horlogeSysteme,
+) {
   return {
     async creerProspect(saisie: SaisieProspect): Promise<ResultatCreation> {
-      const nom = nettoyer(saisie.nom)
-      const email = nettoyer(saisie.email)
-      const telephone = nettoyer(saisie.telephone)
+      const { identite, erreurs } = validerIdentite(saisie)
+      if (Object.keys(erreurs).length > 0) return { ok: false, erreurs }
+      const prospect = await depot.ajouter({ ...identite, etape: "Nouveau" })
+      return { ok: true, prospect }
+    },
 
-      const erreurs: ErreursSaisie = {}
-      if (!nom) erreurs.nom = "Le nom est obligatoire"
-      if (!email && !telephone) {
-        erreurs.contact = "Renseignez un email ou un téléphone"
+    async modifierProspect(
+      id: string,
+      saisie: SaisieModification,
+    ): Promise<ResultatEdition> {
+      const { identite, erreurs } = validerIdentite(saisie)
+      const dateRelance = nettoyer(saisie.dateRelance)
+      const erreursModification: ErreursModification = { ...erreurs }
+      if (dateRelance !== null && !dateValide(dateRelance)) {
+        erreursModification.dateRelance = "Date de relance invalide"
       }
-      if (!nom || Object.keys(erreurs).length > 0) {
-        return { ok: false, erreurs }
+      if (Object.keys(erreursModification).length > 0) {
+        return { ok: false, erreurs: erreursModification }
       }
-
-      const prospect = await depot.ajouter({
-        nom,
-        societe: nettoyer(saisie.societe),
-        email,
-        telephone,
-        etape: "Nouveau",
+      if (!idValide(id)) return { ok: false, erreurs: { prospect: INTROUVABLE } }
+      const prospect = await depot.modifier(id, {
+        ...identite,
+        dateRelance,
+        notes: nettoyer(saisie.notes),
       })
+      if (!prospect) return { ok: false, erreurs: { prospect: INTROUVABLE } }
       return { ok: true, prospect }
     },
 
@@ -66,12 +124,38 @@ export function createProspectService(depot: ProspectRepository) {
       if (!etapeValide(etape)) {
         return { ok: false, erreur: `Étape inconnue : ${etape}` }
       }
-      if (typeof id !== "string" || !id.trim()) {
-        return { ok: false, erreur: "Prospect introuvable" }
-      }
+      if (!idValide(id)) return { ok: false, erreur: INTROUVABLE }
       const prospect = await depot.changerEtape(id, etape)
-      if (!prospect) return { ok: false, erreur: "Prospect introuvable" }
+      if (!prospect) return { ok: false, erreur: INTROUVABLE }
       return { ok: true, prospect }
+    },
+
+    async definirDateRelance(
+      id: string,
+      date: string | null,
+    ): Promise<ResultatModification> {
+      if (date !== null && !dateValide(date)) {
+        return { ok: false, erreur: "Date de relance invalide" }
+      }
+      if (!idValide(id)) return { ok: false, erreur: INTROUVABLE }
+      const prospect = await depot.definirDateRelance(id, date)
+      if (!prospect) return { ok: false, erreur: INTROUVABLE }
+      return { ok: true, prospect }
+    },
+
+    async supprimerProspect(id: string): Promise<ResultatSuppression> {
+      if (!idValide(id)) return { ok: false, erreur: INTROUVABLE }
+      const supprime = await depot.supprimer(id)
+      return supprime ? { ok: true } : { ok: false, erreur: INTROUVABLE }
+    },
+
+    /** Relance due : date de relance aujourd'hui ou antérieure. Plus ancienne d'abord. */
+    async listerARelancer(): Promise<Prospect[]> {
+      const aujourdhui = horloge.aujourdhui()
+      const prospects = await depot.lister()
+      return prospects
+        .filter((p) => p.dateRelance !== null && p.dateRelance <= aujourdhui)
+        .sort((a, b) => a.dateRelance!.localeCompare(b.dateRelance!))
     },
   }
 }

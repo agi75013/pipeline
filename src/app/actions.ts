@@ -29,6 +29,37 @@ const changementEtapeSchema = z.object({
 
 export type EtatChangementEtape = { erreur?: string }
 
+// Date vide = effacement (null). Sinon le format YYYY-MM-DD est exigé ;
+// la validité réelle de la date (pas de 30 février) reste au service.
+const dateRelanceSchema = z.object({
+  id: z.string().trim().min(1),
+  date: z
+    .string()
+    .trim()
+    .transform((valeur) => valeur || null)
+    .pipe(z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable()),
+})
+
+export async function definirDateRelanceProspect(
+  id: string,
+  date: string,
+): Promise<EtatChangementEtape> {
+  const entree = dateRelanceSchema.safeParse({ id, date })
+  if (!entree.success) return { erreur: "Date de relance invalide." }
+  try {
+    const resultat = await obtenirServiceProspects().definirDateRelance(
+      entree.data.id,
+      entree.data.date,
+    )
+    if (!resultat.ok) return { erreur: resultat.erreur }
+  } catch (erreur) {
+    console.error("Échec de l'enregistrement de la date de relance", erreur)
+    return { erreur: "Impossible d'enregistrer la date, réessayez." }
+  }
+  revalidatePath("/")
+  return {}
+}
+
 export async function changerEtapeProspect(
   id: string,
   etape: string,
@@ -72,6 +103,78 @@ export async function ajouterProspect(
       erreurGenerale: "Impossible d'enregistrer, réessayez.",
       valeurs: saisie,
     }
+  }
+  revalidatePath("/")
+  return {}
+}
+
+const FORMAT_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+const modificationProspectSchema = z.object({
+  id: z.string().trim().min(1),
+  saisie: saisieProspectSchema.extend({
+    dateRelance: champTexte.refine(
+      (valeur) => valeur === "" || FORMAT_DATE.test(valeur),
+    ),
+    notes: champTexte,
+  }),
+})
+
+export async function modifierProspect(
+  id: string,
+  _etat: EtatFormulaire,
+  formData: FormData,
+): Promise<EtatFormulaire> {
+  const lue = modificationProspectSchema.safeParse({
+    id,
+    saisie: {
+      nom: formData.get("nom"),
+      societe: formData.get("societe"),
+      email: formData.get("email"),
+      telephone: formData.get("telephone"),
+      dateRelance: formData.get("dateRelance"),
+      notes: formData.get("notes"),
+    },
+  })
+  if (!lue.success) {
+    return { erreurGenerale: "Saisie invalide, réessayez." }
+  }
+  const { saisie } = lue.data
+  try {
+    const resultat = await obtenirServiceProspects().modifierProspect(
+      lue.data.id,
+      saisie,
+    )
+    if (!resultat.ok) {
+      const { prospect, ...erreurs } = resultat.erreurs
+      return { erreurs, erreurGenerale: prospect, valeurs: saisie }
+    }
+  } catch (erreur) {
+    console.error("Échec de la modification d'un prospect", erreur)
+    return {
+      erreurGenerale: "Impossible d'enregistrer, réessayez.",
+      valeurs: saisie,
+    }
+  }
+  revalidatePath("/")
+  return { succes: true }
+}
+
+const suppressionSchema = z.object({ id: z.string().trim().min(1) })
+
+export async function supprimerProspect(
+  id: string,
+): Promise<EtatChangementEtape> {
+  const entree = suppressionSchema.safeParse({ id })
+  if (!entree.success) return { erreur: "Prospect invalide." }
+  try {
+    const resultat = await obtenirServiceProspects().supprimerProspect(
+      entree.data.id,
+    )
+    if (!resultat.ok) return { erreur: resultat.erreur }
+  } catch (erreur) {
+    console.error("Échec de la suppression d'un prospect", erreur)
+    return { erreur: "Impossible de supprimer, réessayez." }
   }
   revalidatePath("/")
   return {}

@@ -21,6 +21,11 @@ export function obtenirServiceProspects(): ProspectService {
       lister: async () => (await obtenirDepot()).lister(),
       changerEtape: async (id, etape) =>
         (await obtenirDepot()).changerEtape(id, etape),
+      definirDateRelance: async (id, date) =>
+        (await obtenirDepot()).definirDateRelance(id, date),
+      modifier: async (id, donnees) =>
+        (await obtenirDepot()).modifier(id, donnees),
+      supprimer: async (id) => (await obtenirDepot()).supprimer(id),
     })
   }
   return service
