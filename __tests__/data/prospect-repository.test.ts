@@ -87,6 +87,21 @@ describe.each(depots)("dépôt de prospects (%s)", (_nom, creer) => {
     const depot = await creer()
     expect(await depot.changerEtape("inconnu", "RDV")).toBeNull()
   })
+
+  it("enregistre puis efface une date de relance", async () => {
+    const depot = await creer()
+    const ajoute = await depot.ajouter(camille)
+    const modifie = await depot.definirDateRelance(ajoute.id, "2026-12-01")
+    expect(modifie).toMatchObject({ id: ajoute.id, dateRelance: "2026-12-01" })
+    expect((await depot.lister())[0].dateRelance).toBe("2026-12-01")
+    await depot.definirDateRelance(ajoute.id, null)
+    expect((await depot.lister())[0].dateRelance).toBeNull()
+  })
+
+  it("renvoie null pour une date de relance sur un id inconnu", async () => {
+    const depot = await creer()
+    expect(await depot.definirDateRelance("inconnu", "2026-12-01")).toBeNull()
+  })
 })
 
 describe("dépôt SQLite", () => {
@@ -113,6 +128,19 @@ describe("dépôt SQLite", () => {
     const liste = await apres.lister()
     await apres.fermer()
     expect(liste[0].etape).toBe("RDV")
+  })
+
+  it("conserve la date de relance après redémarrage", async () => {
+    const url = urlTemporaire()
+    const avant = await createSqliteProspectRepository(url)
+    const ajoute = await avant.ajouter(camille)
+    await avant.definirDateRelance(ajoute.id, "2026-12-01")
+    await avant.fermer()
+
+    const apres = await createSqliteProspectRepository(url)
+    const liste = await apres.lister()
+    await apres.fermer()
+    expect(liste[0].dateRelance).toBe("2026-12-01")
   })
 
   it("refuse un changement vers une étape hors des 6 (contrainte de la base)", async () => {

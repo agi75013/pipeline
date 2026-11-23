@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest"
 import { ETAPES } from "@/data/prospect"
 import { createInMemoryProspectRepository } from "@/data/prospect-repository-memory"
-import { createProspectService } from "@/service/prospect-service"
+import {
+  createProspectService,
+  type ProspectService,
+} from "@/service/prospect-service"
 
 function nouveauService() {
   return createProspectService(createInMemoryProspectRepository())
@@ -181,5 +184,113 @@ describe("changer l'étape d'un prospect", () => {
     const service = nouveauService()
     const resultat = await service.changerEtape("inconnu", "RDV")
     expect(resultat).toEqual({ ok: false, erreur: expect.any(String) })
+  })
+})
+
+describe("voir qui relancer aujourd'hui", () => {
+  const AUJOURDHUI = "2026-11-23"
+
+  async function serviceAvec(relances: Record<string, string | null>) {
+    const service = createProspectService(createInMemoryProspectRepository(), {
+      aujourdhui: () => AUJOURDHUI,
+    })
+    for (const [nom, date] of Object.entries(relances)) {
+      const creation = await service.creerProspect({ nom, email: "x@exemple.fr" })
+      if (!creation.ok) throw new Error("création impossible")
+      if (date) await service.definirDateRelance(creation.prospect.id, date)
+    }
+    return service
+  }
+
+  const nomsARelancer = async (service: ProspectService) =>
+    (await service.listerARelancer()).map((p) => p.nom)
+
+  it("inclut un prospect avec relance aujourd'hui", async () => {
+    const service = await serviceAvec({ Aujourdhui: AUJOURDHUI })
+    expect(await nomsARelancer(service)).toEqual(["Aujourdhui"])
+  })
+
+  it("inclut un prospect avec relance hier", async () => {
+    const service = await serviceAvec({ Hier: "2026-11-22" })
+    expect(await nomsARelancer(service)).toEqual(["Hier"])
+  })
+
+  it("exclut un prospect avec relance demain", async () => {
+    const service = await serviceAvec({ Demain: "2026-11-24" })
+    expect(await nomsARelancer(service)).toEqual([])
+  })
+
+  it("exclut un prospect sans date de relance", async () => {
+    const service = await serviceAvec({ Sans: null })
+    expect(await nomsARelancer(service)).toEqual([])
+  })
+
+  it("contient exactement les relances dues, la plus ancienne en premier", async () => {
+    const service = await serviceAvec({
+      Demain: "2026-11-24",
+      Aujourdhui: AUJOURDHUI,
+      Sans: null,
+      MoisDernier: "2026-10-23",
+      AnDernier: "2025-12-31",
+    })
+    expect(await nomsARelancer(service)).toEqual([
+      "AnDernier",
+      "MoisDernier",
+      "Aujourdhui",
+    ])
+  })
+
+  it("utilise la date fournie par l'horloge, pas une date en dur", async () => {
+    let jour = "2026-11-23"
+    const service = createProspectService(createInMemoryProspectRepository(), {
+      aujourdhui: () => jour,
+    })
+    const creation = await service.creerProspect({ nom: "A", email: "a@exemple.fr" })
+    if (!creation.ok) throw new Error("création impossible")
+    await service.definirDateRelance(creation.prospect.id, "2026-11-24")
+    expect(await service.listerARelancer()).toEqual([])
+    jour = "2026-11-24"
+    expect(await service.listerARelancer()).toHaveLength(1)
+  })
+})
+
+describe("saisir une date de relance", () => {
+  async function serviceAvecCamille() {
+    const service = nouveauService()
+    const creation = await service.creerProspect({
+      nom: "Camille",
+      email: "c@exemple.fr",
+    })
+    if (!creation.ok) throw new Error("création impossible")
+    return { service, id: creation.prospect.id }
+  }
+
+  it("enregistre la date de relance", async () => {
+    const { service, id } = await serviceAvecCamille()
+    const resultat = await service.definirDateRelance(id, "2026-12-01")
+    expect(resultat.ok).toBe(true)
+    expect((await service.listerProspects())[0].dateRelance).toBe("2026-12-01")
+  })
+
+  it("efface la date de relance avec null", async () => {
+    const { service, id } = await serviceAvecCamille()
+    await service.definirDateRelance(id, "2026-12-01")
+    expect((await service.definirDateRelance(id, null)).ok).toBe(true)
+    expect((await service.listerProspects())[0].dateRelance).toBeNull()
+  })
+
+  it("refuse une date mal formée ou impossible", async () => {
+    const { service, id } = await serviceAvecCamille()
+    for (const date of ["demain", "2026-13-01", "2026-02-30", "01/12/2026", ""]) {
+      const resultat = await service.definirDateRelance(id, date)
+      expect(resultat).toEqual({ ok: false, erreur: expect.any(String) })
+    }
+    expect((await service.listerProspects())[0].dateRelance).toBeNull()
+  })
+
+  it("signale un prospect introuvable", async () => {
+    const service = nouveauService()
+    const resultat = await service.definirDateRelance("inconnu", "2026-12-01")
+    expect(resultat).toEqual({ ok: false, erreur: "Prospect introuvable" })
   })
 })

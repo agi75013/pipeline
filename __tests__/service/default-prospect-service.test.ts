@@ -26,3 +26,18 @@ describe("service de prospects câblé sur la base", () => {
     expect(liste.find((p) => p.id === creation.prospect.id)?.etape).toBe("RDV")
   })
 })
+
+describe("relances via la base configurée", () => {
+  it("liste un prospect dont la relance est passée", async () => {
+    process.env.DATABASE_URL = ":memory:"
+    const service = obtenirServiceProspects()
+    const creation = await service.creerProspect({
+      nom: "Relance",
+      email: "r@exemple.fr",
+    })
+    if (!creation.ok) throw new Error("création impossible")
+    await service.definirDateRelance(creation.prospect.id, "2000-01-01")
+    const noms = (await service.listerARelancer()).map((p) => p.nom)
+    expect(noms).toContain("Relance")
+  })
+})

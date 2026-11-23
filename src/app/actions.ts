@@ -29,6 +29,37 @@ const changementEtapeSchema = z.object({
 
 export type EtatChangementEtape = { erreur?: string }
 
+// Date vide = effacement (null). Sinon le format YYYY-MM-DD est exigé ;
+// la validité réelle de la date (pas de 30 février) reste au service.
+const dateRelanceSchema = z.object({
+  id: z.string().trim().min(1),
+  date: z
+    .string()
+    .trim()
+    .transform((valeur) => valeur || null)
+    .pipe(z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable()),
+})
+
+export async function definirDateRelanceProspect(
+  id: string,
+  date: string,
+): Promise<EtatChangementEtape> {
+  const entree = dateRelanceSchema.safeParse({ id, date })
+  if (!entree.success) return { erreur: "Date de relance invalide." }
+  try {
+    const resultat = await obtenirServiceProspects().definirDateRelance(
+      entree.data.id,
+      entree.data.date,
+    )
+    if (!resultat.ok) return { erreur: resultat.erreur }
+  } catch (erreur) {
+    console.error("Échec de l'enregistrement de la date de relance", erreur)
+    return { erreur: "Impossible d'enregistrer la date, réessayez." }
+  }
+  revalidatePath("/")
+  return {}
+}
+
 export async function changerEtapeProspect(
   id: string,
   etape: string,

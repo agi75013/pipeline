@@ -1,5 +1,6 @@
 import { ETAPES } from "@/data/prospect"
 import type { Etape, Prospect, ProspectRepository } from "@/data/prospect"
+import { horlogeSysteme, type Horloge } from "@/service/horloge"
 
 export type { Prospect, Etape } from "@/data/prospect"
 export { ETAPES }
@@ -17,6 +18,10 @@ export type ResultatCreation =
   | { ok: true; prospect: Prospect }
   | { ok: false; erreurs: ErreursSaisie }
 
+export type ResultatModification =
+  | { ok: true; prospect: Prospect }
+  | { ok: false; erreur: string }
+
 export type ResultatChangementEtape =
   | { ok: true; prospect: Prospect }
   | { ok: false; erreur: string }
@@ -29,7 +34,24 @@ const nettoyer = (valeur?: string) => {
   return texte ? texte : null
 }
 
-export function createProspectService(depot: ProspectRepository) {
+const idValide = (id: unknown): id is string =>
+  typeof id === "string" && id.trim() !== ""
+
+/** Date réelle au format YYYY-MM-DD (refuse 2026-02-30). */
+const dateValide = (valeur: unknown): valeur is string => {
+  if (typeof valeur !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(valeur)) {
+    return false
+  }
+  const date = new Date(`${valeur}T00:00:00Z`)
+  return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(valeur)
+}
+
+const INTROUVABLE = "Prospect introuvable"
+
+export function createProspectService(
+  depot: ProspectRepository,
+  horloge: Horloge = horlogeSysteme,
+) {
   return {
     async creerProspect(saisie: SaisieProspect): Promise<ResultatCreation> {
       const nom = nettoyer(saisie.nom)
@@ -66,12 +88,32 @@ export function createProspectService(depot: ProspectRepository) {
       if (!etapeValide(etape)) {
         return { ok: false, erreur: `Étape inconnue : ${etape}` }
       }
-      if (typeof id !== "string" || !id.trim()) {
-        return { ok: false, erreur: "Prospect introuvable" }
-      }
+      if (!idValide(id)) return { ok: false, erreur: INTROUVABLE }
       const prospect = await depot.changerEtape(id, etape)
-      if (!prospect) return { ok: false, erreur: "Prospect introuvable" }
+      if (!prospect) return { ok: false, erreur: INTROUVABLE }
       return { ok: true, prospect }
+    },
+
+    async definirDateRelance(
+      id: string,
+      date: string | null,
+    ): Promise<ResultatModification> {
+      if (date !== null && !dateValide(date)) {
+        return { ok: false, erreur: "Date de relance invalide" }
+      }
+      if (!idValide(id)) return { ok: false, erreur: INTROUVABLE }
+      const prospect = await depot.definirDateRelance(id, date)
+      if (!prospect) return { ok: false, erreur: INTROUVABLE }
+      return { ok: true, prospect }
+    },
+
+    /** Relance due : date de relance aujourd'hui ou antérieure. Plus ancienne d'abord. */
+    async listerARelancer(): Promise<Prospect[]> {
+      const aujourdhui = horloge.aujourdhui()
+      const prospects = await depot.lister()
+      return prospects
+        .filter((p) => p.dateRelance !== null && p.dateRelance <= aujourdhui)
+        .sort((a, b) => a.dateRelance!.localeCompare(b.dateRelance!))
     },
   }
 }

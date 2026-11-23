@@ -2,13 +2,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const creerProspect = vi.fn()
 const changerEtape = vi.fn()
+const definirDateRelance = vi.fn()
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
 vi.mock("@/service/default-prospect-service", () => ({
-  obtenirServiceProspects: () => ({ creerProspect, changerEtape }),
+  obtenirServiceProspects: () => ({
+    creerProspect,
+    changerEtape,
+    definirDateRelance,
+  }),
 }))
 
-import { ajouterProspect, changerEtapeProspect } from "@/app/actions"
+import {
+  ajouterProspect,
+  changerEtapeProspect,
+  definirDateRelanceProspect,
+} from "@/app/actions"
 
 const formulaire = () => {
   const formData = new FormData()
@@ -130,5 +139,54 @@ describe("validation des entrées de ajouterProspect (zod)", () => {
     const etat = await ajouterProspect({}, formData)
     expect(etat.erreurGenerale).toBe("Saisie invalide, réessayez.")
     expect(creerProspect).not.toHaveBeenCalled()
+  })
+})
+
+describe("action de date de relance", () => {
+  beforeEach(() => {
+    definirDateRelance.mockReset()
+  })
+
+  it("transmet l'id et la date au service et renvoie un état vide", async () => {
+    definirDateRelance.mockResolvedValue({ ok: true, prospect: {} })
+    expect(await definirDateRelanceProspect("42", "2026-11-23")).toEqual({})
+    expect(definirDateRelance).toHaveBeenCalledWith("42", "2026-11-23")
+  })
+
+  it("transmet null au service pour une date vide (effacement)", async () => {
+    definirDateRelance.mockResolvedValue({ ok: true, prospect: {} })
+    await definirDateRelanceProspect("42", "  ")
+    expect(definirDateRelance).toHaveBeenCalledWith("42", null)
+  })
+
+  it("renvoie l'erreur du service quand il refuse", async () => {
+    definirDateRelance.mockResolvedValue({ ok: false, erreur: "Prospect introuvable" })
+    expect(await definirDateRelanceProspect("42", "2026-11-23")).toEqual({
+      erreur: "Prospect introuvable",
+    })
+  })
+
+  it("renvoie un message clair si la base échoue", async () => {
+    definirDateRelance.mockRejectedValue(new Error("SQLITE_BUSY"))
+    expect(await definirDateRelanceProspect("42", "2026-11-23")).toEqual({
+      erreur: "Impossible d'enregistrer la date, réessayez.",
+    })
+  })
+
+  it("refuse une date mal formée sans appeler le service", async () => {
+    for (const date of ["demain", "23/11/2026", "2026-11-23T10:00"]) {
+      expect((await definirDateRelanceProspect("42", date)).erreur).toBeTruthy()
+    }
+    expect(definirDateRelance).not.toHaveBeenCalled()
+  })
+
+  it("refuse une date ou un id qui ne sont pas du texte sans appeler le service", async () => {
+    const etats = [
+      await definirDateRelanceProspect("42", 20261123 as unknown as string),
+      await definirDateRelanceProspect(42 as unknown as string, "2026-11-23"),
+      await definirDateRelanceProspect("", "2026-11-23"),
+    ]
+    for (const etat of etats) expect(etat.erreur).toBeTruthy()
+    expect(definirDateRelance).not.toHaveBeenCalled()
   })
 })

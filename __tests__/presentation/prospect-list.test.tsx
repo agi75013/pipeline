@@ -16,10 +16,12 @@ const camille: Prospect = {
 }
 
 const changerEtape = vi.fn(async () => ({}))
+const definirDateRelance = vi.fn(async () => ({}))
+const actions = { changerEtape, definirDateRelance }
 
 describe("liste des prospects", () => {
   it("affiche le nom, la société, le contact et l'étape", () => {
-    render(<ProspectList prospects={[camille]} changerEtape={changerEtape} />)
+    render(<ProspectList prospects={[camille]} {...actions} />)
     expect(screen.getByText("Camille Durand")).toBeInTheDocument()
     expect(screen.getByText("Acme")).toBeInTheDocument()
     expect(screen.getByText("camille@exemple.fr")).toBeInTheDocument()
@@ -30,14 +32,24 @@ describe("liste des prospects", () => {
     render(
       <ProspectList
         prospects={[{ ...camille, etape: "RDV" }]}
-        changerEtape={changerEtape}
+        {...actions}
       />,
     )
     expect(screen.getByRole("combobox")).toHaveTextContent("RDV")
   })
 
+  it("affiche la date de relance du prospect dans un champ modifiable", () => {
+    render(
+      <ProspectList
+        prospects={[{ ...camille, dateRelance: "2026-12-01" }]}
+        {...actions}
+      />,
+    )
+    expect(screen.getByLabelText("Date de relance")).toHaveValue("2026-12-01")
+  })
+
   it("affiche un état vide explicite", () => {
-    render(<ProspectList prospects={[]} changerEtape={changerEtape} />)
+    render(<ProspectList prospects={[]} {...actions} />)
     expect(screen.getByText(/aucun prospect/i)).toBeInTheDocument()
   })
 })

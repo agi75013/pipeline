@@ -41,6 +41,14 @@ export async function createSqliteProspectRepository(
   const client = createClient({ url })
   await client.execute(SCHEMA)
 
+  const relire = async (id: string) => {
+    const resultat = await client.execute({
+      sql: "SELECT * FROM prospects WHERE id = ?",
+      args: [id],
+    })
+    return resultat.rows[0] ? versProspect(resultat.rows[0]) : null
+  }
+
   return {
     async ajouter(nouveau) {
       const prospect: Prospect = {
@@ -82,11 +90,16 @@ export async function createSqliteProspectRepository(
         args: [etape, id],
       })
       if (maj.rowsAffected === 0) return null
-      const resultat = await client.execute({
-        sql: "SELECT * FROM prospects WHERE id = ?",
-        args: [id],
+      return relire(id)
+    },
+
+    async definirDateRelance(id, date) {
+      const maj = await client.execute({
+        sql: "UPDATE prospects SET date_relance = ? WHERE id = ?",
+        args: [date, id],
       })
-      return versProspect(resultat.rows[0])
+      if (maj.rowsAffected === 0) return null
+      return relire(id)
     },
 
     async fermer() {

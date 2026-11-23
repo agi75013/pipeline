@@ -3,13 +3,30 @@ import { connection } from "next/server"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ProspectForm } from "@/presentation/prospect-form"
 import { ProspectList } from "@/presentation/prospect-list"
+import { RelanceList } from "@/presentation/relance-list"
 import { obtenirServiceProspects } from "@/service/default-prospect-service"
-import { ajouterProspect, changerEtapeProspect } from "@/app/actions"
+import {
+  ajouterProspect,
+  changerEtapeProspect,
+  definirDateRelanceProspect,
+} from "@/app/actions"
 
 async function Prospects() {
   await connection()
   const prospects = await obtenirServiceProspects().listerProspects()
-  return <ProspectList prospects={prospects} changerEtape={changerEtapeProspect} />
+  return (
+    <ProspectList
+      prospects={prospects}
+      changerEtape={changerEtapeProspect}
+      definirDateRelance={definirDateRelanceProspect}
+    />
+  )
+}
+
+async function Relances() {
+  await connection()
+  const prospects = await obtenirServiceProspects().listerARelancer()
+  return <RelanceList prospects={prospects} />
 }
 
 export default function Home() {
@@ -26,6 +43,17 @@ export default function Home() {
       </header>
 
       <ProspectForm action={ajouterProspect} />
+
+      <section aria-labelledby="titre-relances" className="flex flex-col gap-3">
+        <h2 id="titre-relances" className="text-xl font-semibold">
+          À relancer aujourd&apos;hui
+        </h2>
+        <Suspense
+          fallback={<p className="text-muted-foreground">Chargement...</p>}
+        >
+          <Relances />
+        </Suspense>
+      </section>
 
       <section aria-label="Prospects">
         <Suspense

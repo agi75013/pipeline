@@ -37,4 +37,6 @@ export interface ProspectRepository {
   lister(): Promise<Prospect[]>
   /** Renvoie le prospect mis à jour, ou null si l'id est inconnu. */
   changerEtape(id: string, etape: Etape): Promise<Prospect | null>
+  /** Date YYYY-MM-DD ou null pour l'effacer. Null si l'id est inconnu. */
+  definirDateRelance(id: string, date: string | null): Promise<Prospect | null>
 }
