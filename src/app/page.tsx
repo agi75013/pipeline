@@ -9,6 +9,7 @@ import {
   ajouterProspect,
   changerEtapeProspect,
   definirDateRelanceProspect,
+  modifierProspect,
 } from "@/app/actions"
 
 async function Prospects() {
@@ -19,6 +20,7 @@ async function Prospects() {
       prospects={prospects}
       changerEtape={changerEtapeProspect}
       definirDateRelance={definirDateRelanceProspect}
+      modifier={modifierProspect}
     />
   )
 }

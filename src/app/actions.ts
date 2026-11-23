@@ -107,3 +107,55 @@ export async function ajouterProspect(
   revalidatePath("/")
   return {}
 }
+
+const FORMAT_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+const modificationProspectSchema = z.object({
+  id: z.string().trim().min(1),
+  saisie: saisieProspectSchema.extend({
+    dateRelance: champTexte.refine(
+      (valeur) => valeur === "" || FORMAT_DATE.test(valeur),
+    ),
+    notes: champTexte,
+  }),
+})
+
+export async function modifierProspect(
+  id: string,
+  _etat: EtatFormulaire,
+  formData: FormData,
+): Promise<EtatFormulaire> {
+  const lue = modificationProspectSchema.safeParse({
+    id,
+    saisie: {
+      nom: formData.get("nom"),
+      societe: formData.get("societe"),
+      email: formData.get("email"),
+      telephone: formData.get("telephone"),
+      dateRelance: formData.get("dateRelance"),
+      notes: formData.get("notes"),
+    },
+  })
+  if (!lue.success) {
+    return { erreurGenerale: "Saisie invalide, réessayez." }
+  }
+  const { saisie } = lue.data
+  try {
+    const resultat = await obtenirServiceProspects().modifierProspect(
+      lue.data.id,
+      saisie,
+    )
+    if (!resultat.ok) {
+      const { prospect, ...erreurs } = resultat.erreurs
+      return { erreurs, erreurGenerale: prospect, valeurs: saisie }
+    }
+  } catch (erreur) {
+    console.error("Échec de la modification d'un prospect", erreur)
+    return {
+      erreurGenerale: "Impossible d'enregistrer, réessayez.",
+      valeurs: saisie,
+    }
+  }
+  revalidatePath("/")
+  return { succes: true }
+}

@@ -102,6 +102,25 @@ export async function createSqliteProspectRepository(
       return relire(id)
     },
 
+    async modifier(id, donnees) {
+      const maj = await client.execute({
+        sql: `UPDATE prospects
+          SET nom = ?, societe = ?, email = ?, telephone = ?, date_relance = ?, notes = ?
+          WHERE id = ?`,
+        args: [
+          donnees.nom,
+          donnees.societe,
+          donnees.email,
+          donnees.telephone,
+          donnees.dateRelance,
+          donnees.notes,
+          id,
+        ],
+      })
+      if (maj.rowsAffected === 0) return null
+      return relire(id)
+    },
+
     async fermer() {
       client.close()
     },

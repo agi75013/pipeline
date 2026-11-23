@@ -14,7 +14,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 export type EtatFormulaire = {
-  erreurs?: { nom?: string; contact?: string }
+  erreurs?: { nom?: string; contact?: string; dateRelance?: string }
+  /** Enregistrement réussi (utilisé par la modification pour fermer la fenêtre). */
+  succes?: boolean
   /** Échec technique (base indisponible...), pas une erreur de saisie. */
   erreurGenerale?: string
   valeurs?: Record<string, string>

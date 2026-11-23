@@ -17,7 +17,8 @@ const camille: Prospect = {
 
 const changerEtape = vi.fn(async () => ({}))
 const definirDateRelance = vi.fn(async () => ({}))
-const actions = { changerEtape, definirDateRelance }
+const modifier = vi.fn(async () => ({}))
+const actions = { changerEtape, definirDateRelance, modifier }
 
 describe("liste des prospects", () => {
   it("affiche le nom, la société, le contact et l'étape", () => {
@@ -46,6 +47,13 @@ describe("liste des prospects", () => {
       />,
     )
     expect(screen.getByLabelText("Date de relance")).toHaveValue("2026-12-01")
+  })
+
+  it("propose de modifier chaque prospect", () => {
+    render(<ProspectList prospects={[camille]} {...actions} />)
+    expect(
+      screen.getByRole("button", { name: "Modifier Camille Durand" }),
+    ).toBeInTheDocument()
   })
 
   it("affiche un état vide explicite", () => {

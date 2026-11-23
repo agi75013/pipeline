@@ -30,5 +30,9 @@ export function createInMemoryProspectRepository(): ProspectRepository {
     async definirDateRelance(id, dateRelance) {
       return mettreAJour(id, { dateRelance })
     },
+    async modifier(id, donnees) {
+      const { nom, societe, email, telephone, dateRelance, notes } = donnees
+      return mettreAJour(id, { nom, societe, email, telephone, dateRelance, notes })
+    },
   }
 }

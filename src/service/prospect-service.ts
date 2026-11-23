@@ -14,6 +14,20 @@ export type SaisieProspect = {
 
 export type ErreursSaisie = { nom?: string; contact?: string }
 
+export type SaisieModification = SaisieProspect & {
+  dateRelance?: string
+  notes?: string
+}
+
+export type ErreursModification = ErreursSaisie & {
+  dateRelance?: string
+  prospect?: string
+}
+
+export type ResultatEdition =
+  | { ok: true; prospect: Prospect }
+  | { ok: false; erreurs: ErreursModification }
+
 export type ResultatCreation =
   | { ok: true; prospect: Prospect }
   | { ok: false; erreurs: ErreursSaisie }
@@ -48,32 +62,52 @@ const dateValide = (valeur: unknown): valeur is string => {
 
 const INTROUVABLE = "Prospect introuvable"
 
+/** Règles communes à l'ajout et à la modification : nom et contact obligatoires. */
+function validerIdentite(saisie: SaisieProspect) {
+  const nom = nettoyer(saisie.nom)
+  const email = nettoyer(saisie.email)
+  const telephone = nettoyer(saisie.telephone)
+  const erreurs: ErreursSaisie = {}
+  if (!nom) erreurs.nom = "Le nom est obligatoire"
+  if (!email && !telephone) {
+    erreurs.contact = "Renseignez un email ou un téléphone"
+  }
+  const identite = { nom: nom ?? "", societe: nettoyer(saisie.societe), email, telephone }
+  return { identite, erreurs }
+}
+
 export function createProspectService(
   depot: ProspectRepository,
   horloge: Horloge = horlogeSysteme,
 ) {
   return {
     async creerProspect(saisie: SaisieProspect): Promise<ResultatCreation> {
-      const nom = nettoyer(saisie.nom)
-      const email = nettoyer(saisie.email)
-      const telephone = nettoyer(saisie.telephone)
+      const { identite, erreurs } = validerIdentite(saisie)
+      if (Object.keys(erreurs).length > 0) return { ok: false, erreurs }
+      const prospect = await depot.ajouter({ ...identite, etape: "Nouveau" })
+      return { ok: true, prospect }
+    },
 
-      const erreurs: ErreursSaisie = {}
-      if (!nom) erreurs.nom = "Le nom est obligatoire"
-      if (!email && !telephone) {
-        erreurs.contact = "Renseignez un email ou un téléphone"
+    async modifierProspect(
+      id: string,
+      saisie: SaisieModification,
+    ): Promise<ResultatEdition> {
+      const { identite, erreurs } = validerIdentite(saisie)
+      const dateRelance = nettoyer(saisie.dateRelance)
+      const erreursModification: ErreursModification = { ...erreurs }
+      if (dateRelance !== null && !dateValide(dateRelance)) {
+        erreursModification.dateRelance = "Date de relance invalide"
       }
-      if (!nom || Object.keys(erreurs).length > 0) {
-        return { ok: false, erreurs }
+      if (Object.keys(erreursModification).length > 0) {
+        return { ok: false, erreurs: erreursModification }
       }
-
-      const prospect = await depot.ajouter({
-        nom,
-        societe: nettoyer(saisie.societe),
-        email,
-        telephone,
-        etape: "Nouveau",
+      if (!idValide(id)) return { ok: false, erreurs: { prospect: INTROUVABLE } }
+      const prospect = await depot.modifier(id, {
+        ...identite,
+        dateRelance,
+        notes: nettoyer(saisie.notes),
       })
+      if (!prospect) return { ok: false, erreurs: { prospect: INTROUVABLE } }
       return { ok: true, prospect }
     },
 

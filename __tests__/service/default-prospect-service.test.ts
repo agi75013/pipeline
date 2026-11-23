@@ -41,3 +41,23 @@ describe("relances via la base configurée", () => {
     expect(noms).toContain("Relance")
   })
 })
+
+describe("modification via la base configurée", () => {
+  it("modifie la société d'un prospect", async () => {
+    process.env.DATABASE_URL = ":memory:"
+    const service = obtenirServiceProspects()
+    const creation = await service.creerProspect({
+      nom: "Modif",
+      email: "m@exemple.fr",
+    })
+    if (!creation.ok) throw new Error("création impossible")
+    const resultat = await service.modifierProspect(creation.prospect.id, {
+      nom: "Modif",
+      societe: "Acme",
+      email: "m@exemple.fr",
+    })
+    expect(resultat.ok).toBe(true)
+    const liste = await service.listerProspects()
+    expect(liste.find((p) => p.id === creation.prospect.id)?.societe).toBe("Acme")
+  })
+})

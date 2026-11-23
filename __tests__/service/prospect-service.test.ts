@@ -294,3 +294,120 @@ describe("saisir une date de relance", () => {
     expect(resultat).toEqual({ ok: false, erreur: "Prospect introuvable" })
   })
 })
+
+describe("modifier un prospect", () => {
+  const AUJOURDHUI = "2026-11-23"
+
+  async function serviceAvecCamille() {
+    const service = createProspectService(createInMemoryProspectRepository(), {
+      aujourdhui: () => AUJOURDHUI,
+    })
+    const creation = await service.creerProspect({
+      nom: "Camille Durand",
+      societe: "Acme",
+      email: "camille@exemple.fr",
+    })
+    if (!creation.ok) throw new Error("création impossible")
+    return { service, id: creation.prospect.id }
+  }
+
+  const saisieCamille = {
+    nom: "Camille Durand",
+    societe: "Acme",
+    email: "camille@exemple.fr",
+    telephone: "",
+    dateRelance: "",
+    notes: "",
+  }
+
+  it("change la société, la liste affiche la nouvelle société", async () => {
+    const { service, id } = await serviceAvecCamille()
+    const resultat = await service.modifierProspect(id, {
+      ...saisieCamille,
+      societe: "Nouvelle Société",
+    })
+    expect(resultat.ok).toBe(true)
+    expect((await service.listerProspects())[0].societe).toBe("Nouvelle Société")
+  })
+
+  it("refuse une modification qui retire l'email et le téléphone", async () => {
+    const { service, id } = await serviceAvecCamille()
+    const resultat = await service.modifierProspect(id, {
+      ...saisieCamille,
+      email: "  ",
+      telephone: "",
+    })
+    expect(resultat).toEqual({
+      ok: false,
+      erreurs: { contact: "Renseignez un email ou un téléphone" },
+    })
+    expect((await service.listerProspects())[0].email).toBe("camille@exemple.fr")
+  })
+
+  it("refuse une modification sans nom", async () => {
+    const { service, id } = await serviceAvecCamille()
+    const resultat = await service.modifierProspect(id, { ...saisieCamille, nom: "" })
+    expect(resultat).toEqual({
+      ok: false,
+      erreurs: { nom: "Le nom est obligatoire" },
+    })
+  })
+
+  it("enregistre les notes, on les retrouve en relisant le prospect", async () => {
+    const { service, id } = await serviceAvecCamille()
+    await service.modifierProspect(id, {
+      ...saisieCamille,
+      notes: "  Rappeler en janvier  ",
+    })
+    expect((await service.listerProspects())[0].notes).toBe("Rappeler en janvier")
+  })
+
+  it("une date de relance mise à aujourd'hui fait apparaître le prospect dans les relances", async () => {
+    const { service, id } = await serviceAvecCamille()
+    expect(await service.listerARelancer()).toEqual([])
+    await service.modifierProspect(id, { ...saisieCamille, dateRelance: AUJOURDHUI })
+    expect((await service.listerARelancer()).map((p) => p.id)).toEqual([id])
+  })
+
+  it("efface la date de relance et les notes quand elles sont vides", async () => {
+    const { service, id } = await serviceAvecCamille()
+    await service.modifierProspect(id, {
+      ...saisieCamille,
+      dateRelance: "2026-12-01",
+      notes: "x",
+    })
+    await service.modifierProspect(id, saisieCamille)
+    expect((await service.listerProspects())[0]).toMatchObject({
+      dateRelance: null,
+      notes: null,
+    })
+  })
+
+  it("refuse une date de relance impossible", async () => {
+    const { service, id } = await serviceAvecCamille()
+    const resultat = await service.modifierProspect(id, {
+      ...saisieCamille,
+      dateRelance: "2026-02-30",
+    })
+    expect(resultat).toEqual({
+      ok: false,
+      erreurs: { dateRelance: "Date de relance invalide" },
+    })
+  })
+
+  it("ne change pas l'étape du prospect", async () => {
+    const { service, id } = await serviceAvecCamille()
+    await service.changerEtape(id, "RDV")
+    await service.modifierProspect(id, { ...saisieCamille, etape: "Perdu" } as never)
+    expect((await service.listerProspects())[0].etape).toBe("RDV")
+  })
+
+  it("signale un prospect introuvable", async () => {
+    const service = nouveauService()
+    const resultat = await service.modifierProspect("inconnu", saisieCamille)
+    expect(resultat).toEqual({
+      ok: false,
+      erreurs: { prospect: "Prospect introuvable" },
+    })
+  })
+})

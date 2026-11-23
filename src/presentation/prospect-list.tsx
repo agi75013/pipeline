@@ -4,6 +4,10 @@ import {
   type ActionDateRelance,
 } from "@/presentation/date-relance-input"
 import {
+  ProspectEditDialog,
+  type ActionModification,
+} from "@/presentation/prospect-edit-dialog"
+import {
   Table,
   TableBody,
   TableCell,
@@ -17,10 +21,12 @@ export function ProspectList({
   prospects,
   changerEtape,
   definirDateRelance,
+  modifier,
 }: {
   prospects: Prospect[]
   changerEtape: ActionEtape
   definirDateRelance: ActionDateRelance
+  modifier: ActionModification
 }) {
   if (prospects.length === 0) {
     return (
@@ -38,6 +44,9 @@ export function ProspectList({
           <TableHead>Contact</TableHead>
           <TableHead>Étape</TableHead>
           <TableHead>Relance</TableHead>
+          <TableHead>
+            <span className="sr-only">Actions</span>
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -60,6 +69,9 @@ export function ProspectList({
                 dateRelance={p.dateRelance}
                 action={definirDateRelance}
               />
+            </TableCell>
+            <TableCell>
+              <ProspectEditDialog prospect={p} action={modifier} />
             </TableCell>
           </TableRow>
         ))}

@@ -98,6 +98,37 @@ describe.each(depots)("dépôt de prospects (%s)", (_nom, creer) => {
     expect((await depot.lister())[0].dateRelance).toBeNull()
   })
 
+  it("modifie toutes les informations d'un prospect sans toucher à l'étape", async () => {
+    const depot = await creer()
+    const ajoute = await depot.ajouter(camille)
+    await depot.changerEtape(ajoute.id, "RDV")
+    const donnees = {
+      nom: "Camille Martin",
+      societe: "Acme",
+      email: null,
+      telephone: "0102030405",
+      dateRelance: "2026-12-01",
+      notes: "Rappeler en janvier",
+    }
+    const modifie = await depot.modifier(ajoute.id, donnees)
+    expect(modifie).toMatchObject({ id: ajoute.id, etape: "RDV", ...donnees })
+    expect((await depot.lister())[0]).toMatchObject({ etape: "RDV", ...donnees })
+  })
+
+  it("renvoie null pour la modification d'un id inconnu", async () => {
+    const depot = await creer()
+    expect(
+      await depot.modifier("inconnu", {
+        nom: "X",
+        societe: null,
+        email: "x@exemple.fr",
+        telephone: null,
+        dateRelance: null,
+        notes: null,
+      }),
+    ).toBeNull()
+  })
+
   it("renvoie null pour une date de relance sur un id inconnu", async () => {
     const depot = await creer()
     expect(await depot.definirDateRelance("inconnu", "2026-12-01")).toBeNull()
@@ -141,6 +172,27 @@ describe("dépôt SQLite", () => {
     const liste = await apres.lister()
     await apres.fermer()
     expect(liste[0].dateRelance).toBe("2026-12-01")
+  })
+
+  it("conserve les modifications (société, notes) après redémarrage", async () => {
+    const url = urlTemporaire()
+    const avant = await createSqliteProspectRepository(url)
+    const ajoute = await avant.ajouter(camille)
+    await avant.modifier(ajoute.id, {
+      ...camille,
+      societe: "Nouvelle Société",
+      dateRelance: null,
+      notes: "Rappeler en janvier",
+    })
+    await avant.fermer()
+
+    const apres = await createSqliteProspectRepository(url)
+    const liste = await apres.lister()
+    await apres.fermer()
+    expect(liste[0]).toMatchObject({
+      societe: "Nouvelle Société",
+      notes: "Rappeler en janvier",
+    })
   })
 
   it("refuse un changement vers une étape hors des 6 (contrainte de la base)", async () => {
