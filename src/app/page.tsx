@@ -4,12 +4,12 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { ProspectForm } from "@/presentation/prospect-form"
 import { ProspectList } from "@/presentation/prospect-list"
 import { obtenirServiceProspects } from "@/service/default-prospect-service"
-import { ajouterProspect } from "@/app/actions"
+import { ajouterProspect, changerEtapeProspect } from "@/app/actions"
 
 async function Prospects() {
   await connection()
   const prospects = await obtenirServiceProspects().listerProspects()
-  return <ProspectList prospects={prospects} />
+  return <ProspectList prospects={prospects} changerEtape={changerEtapeProspect} />
 }
 
 export default function Home() {

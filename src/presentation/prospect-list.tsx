@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge"
+import { EtapeSelect, type ActionEtape } from "@/presentation/etape-select"
 import {
   Table,
   TableBody,
@@ -9,7 +9,13 @@ import {
 } from "@/components/ui/table"
 import type { Prospect } from "@/service/prospect-service"
 
-export function ProspectList({ prospects }: { prospects: Prospect[] }) {
+export function ProspectList({
+  prospects,
+  changerEtape,
+}: {
+  prospects: Prospect[]
+  changerEtape: ActionEtape
+}) {
   if (prospects.length === 0) {
     return (
       <p className="text-muted-foreground">
@@ -39,7 +45,7 @@ export function ProspectList({ prospects }: { prospects: Prospect[] }) {
               </div>
             </TableCell>
             <TableCell>
-              <Badge variant="outline">{p.etape}</Badge>
+              <EtapeSelect id={p.id} etape={p.etape} action={changerEtape} />
             </TableCell>
           </TableRow>
         ))}

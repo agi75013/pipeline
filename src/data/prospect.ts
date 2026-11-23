@@ -35,4 +35,6 @@ export interface ProspectRepository {
   ajouter(nouveau: NouveauProspect): Promise<Prospect>
   /** Le plus récent en premier. */
   lister(): Promise<Prospect[]>
+  /** Renvoie le prospect mis à jour, ou null si l'id est inconnu. */
+  changerEtape(id: string, etape: Etape): Promise<Prospect | null>
 }
