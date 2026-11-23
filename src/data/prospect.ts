@@ -29,6 +29,9 @@ export type NouveauProspect = {
   email: string | null
   telephone: string | null
   etape: Etape
+  /** Format YYYY-MM-DD. Absent : pas de relance. */
+  dateRelance?: string | null
+  notes?: string | null
 }
 
 /** Informations modifiables d'un prospect (tout sauf l'id, l'étape et la création). */

@@ -1,6 +1,7 @@
 import { ETAPES } from "@/data/prospect"
 import type { Etape, Prospect, ProspectRepository } from "@/data/prospect"
 import { horlogeSysteme, type Horloge } from "@/service/horloge"
+import { analyserContact, relancesDues } from "@/service/vue-pipeline"
 
 export type { Prospect, Etape } from "@/data/prospect"
 export { ETAPES }
@@ -22,15 +23,17 @@ export type SaisieModification = SaisieProspect & {
 export type ErreursModification = ErreursSaisie & {
   dateRelance?: string
   prospect?: string
+  etape?: string
 }
+
+export type ResultatCreation =
+  | { ok: true; prospect: Prospect }
+  | { ok: false; erreurs: ErreursModification }
 
 export type ResultatEdition =
   | { ok: true; prospect: Prospect }
   | { ok: false; erreurs: ErreursModification }
 
-export type ResultatCreation =
-  | { ok: true; prospect: Prospect }
-  | { ok: false; erreurs: ErreursSaisie }
 
 export type ResultatModification =
   | { ok: true; prospect: Prospect }
@@ -82,12 +85,39 @@ export function createProspectService(
   depot: ProspectRepository,
   horloge: Horloge = horlogeSysteme,
 ) {
-  return {
-    async creerProspect(saisie: SaisieProspect): Promise<ResultatCreation> {
+  const service = {
+    /** Nouveau prospect, à l'étape « Nouveau » sauf si une autre est demandée. */
+    async creerProspect(
+      saisie: SaisieModification,
+      options: { etape?: string } = {},
+    ): Promise<ResultatCreation> {
       const { identite, erreurs } = validerIdentite(saisie)
-      if (Object.keys(erreurs).length > 0) return { ok: false, erreurs }
-      const prospect = await depot.ajouter({ ...identite, etape: "Nouveau" })
+      const dateRelance = nettoyer(saisie.dateRelance)
+      const toutes: ErreursModification = { ...erreurs }
+      if (dateRelance !== null && !dateValide(dateRelance)) {
+        toutes.dateRelance = "Date de relance invalide"
+      }
+      const etape = options.etape ?? "Nouveau"
+      if (!etapeValide(etape)) toutes.etape = `Étape inconnue : ${etape}`
+      if (Object.keys(toutes).length > 0 || !etapeValide(etape)) {
+        return { ok: false, erreurs: toutes }
+      }
+      const prospect = await depot.ajouter({
+        ...identite,
+        etape,
+        dateRelance,
+        notes: nettoyer(saisie.notes),
+      })
       return { ok: true, prospect }
+    },
+
+    /** Ajout rapide dans une colonne : un nom et un contact unique (email ou téléphone). */
+    creerProspectRapide(etape: string, nom: string, contact: string) {
+      return service.creerProspect({ nom, ...analyserContact(contact) }, { etape })
+    },
+
+    aujourdhui(): string {
+      return horloge.aujourdhui()
     },
 
     async modifierProspect(
@@ -151,13 +181,10 @@ export function createProspectService(
 
     /** Relance due : date de relance aujourd'hui ou antérieure. Plus ancienne d'abord. */
     async listerARelancer(): Promise<Prospect[]> {
-      const aujourdhui = horloge.aujourdhui()
-      const prospects = await depot.lister()
-      return prospects
-        .filter((p) => p.dateRelance !== null && p.dateRelance <= aujourdhui)
-        .sort((a, b) => a.dateRelance!.localeCompare(b.dateRelance!))
+      return relancesDues(await depot.lister(), horloge.aujourdhui())
     },
   }
+  return service
 }
 
 export type ProspectService = ReturnType<typeof createProspectService>

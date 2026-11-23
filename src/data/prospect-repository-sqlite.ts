@@ -54,8 +54,8 @@ export async function createSqliteProspectRepository(
       const prospect: Prospect = {
         ...nouveau,
         id: crypto.randomUUID(),
-        dateRelance: null,
-        notes: null,
+        dateRelance: nouveau.dateRelance ?? null,
+        notes: nouveau.notes ?? null,
         creeLe: new Date().toISOString(),
       }
       await client.execute({

@@ -59,6 +59,15 @@ describe.each(depots)("dépôt de prospects (%s)", (_nom, creer) => {
     expect(noms).toEqual(["Second", "Premier"])
   })
 
+  it("enregistre la date de relance et les notes fournies à l'ajout", async () => {
+    const depot = await creer()
+    await depot.ajouter({ ...camille, dateRelance: "2026-12-01", notes: "Rappeler" })
+    expect((await depot.lister())[0]).toMatchObject({
+      dateRelance: "2026-12-01",
+      notes: "Rappeler",
+    })
+  })
+
   it("renvoie une liste vide au départ", async () => {
     const depot = await creer()
     expect(await depot.lister()).toEqual([])
