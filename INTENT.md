@@ -18,6 +18,9 @@ Un prospect est à relancer aujourd'hui si sa date de relance est aujourd'hui ou
 ### Gestion des prospects
 Je peux ajouter, modifier et supprimer un prospect.
 
+### Recherche
+Je peux rechercher un prospect (nom, société, email, téléphone) et filtrer la liste par état de relance (à relancer, en retard, prévue, sans relance).
+
 ## Architecture
 Une architecture en 3 couches : présentation, service, données.
 La présentation affiche et collecte les saisies, sans règle métier.

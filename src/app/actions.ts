@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import type { EtatFormulaire } from "@/presentation/prospect-form"
+import type { EtatFormulaire } from "@/presentation/etats"
 import { obtenirServiceProspects } from "@/service/default-prospect-service"
 import { ETAPES } from "@/service/prospect-service"
 
@@ -80,23 +80,40 @@ export async function changerEtapeProspect(
   return {}
 }
 
+// Création depuis la fiche : identité, étape de départ, relance et notes.
+const creationProspectSchema = z.object({
+  saisie: saisieProspectSchema.extend({
+    dateRelance: champTexte.refine((v) => v === "" || /^\d{4}-\d{2}-\d{2}$/.test(v)),
+    notes: champTexte,
+  }),
+  etape: z.enum(ETAPES),
+})
+
 export async function ajouterProspect(
   _etat: EtatFormulaire,
   formData: FormData,
 ): Promise<EtatFormulaire> {
-  const lue = saisieProspectSchema.safeParse({
-    nom: formData.get("nom"),
-    societe: formData.get("societe"),
-    email: formData.get("email"),
-    telephone: formData.get("telephone"),
+  const lue = creationProspectSchema.safeParse({
+    saisie: {
+      nom: formData.get("nom"),
+      societe: formData.get("societe"),
+      email: formData.get("email"),
+      telephone: formData.get("telephone"),
+      dateRelance: formData.get("dateRelance"),
+      notes: formData.get("notes"),
+    },
+    etape: formData.get("etape") ?? "Nouveau",
   })
   if (!lue.success) {
     return { erreurGenerale: "Saisie invalide, réessayez." }
   }
-  const saisie = lue.data
+  const { saisie, etape } = lue.data
   try {
-    const resultat = await obtenirServiceProspects().creerProspect(saisie)
-    if (!resultat.ok) return { erreurs: resultat.erreurs, valeurs: saisie }
+    const resultat = await obtenirServiceProspects().creerProspect(saisie, { etape })
+    if (!resultat.ok) {
+      const { prospect, etape: erreurEtape, ...erreurs } = resultat.erreurs
+      return { erreurs, erreurGenerale: prospect ?? erreurEtape, valeurs: saisie }
+    }
   } catch (erreur) {
     console.error("Échec de l'ajout d'un prospect", erreur)
     return {
@@ -105,7 +122,44 @@ export async function ajouterProspect(
     }
   }
   revalidatePath("/")
-  return {}
+  return { succes: true }
+}
+
+const ajoutRapideSchema = z.object({
+  etape: z.enum(ETAPES),
+  nom: z.string().trim(),
+  contact: z.string().trim(),
+})
+
+export type EtatAjoutRapide = {
+  id?: string
+  erreurs?: { nom?: string; contact?: string }
+  erreurGenerale?: string
+}
+
+export async function ajoutRapideProspect(
+  etape: string,
+  nom: string,
+  contact: string,
+): Promise<EtatAjoutRapide> {
+  const entree = ajoutRapideSchema.safeParse({ etape, nom, contact })
+  if (!entree.success) return { erreurGenerale: "Saisie invalide, réessayez." }
+  try {
+    const resultat = await obtenirServiceProspects().creerProspectRapide(
+      entree.data.etape,
+      entree.data.nom,
+      entree.data.contact,
+    )
+    if (!resultat.ok) {
+      const { nom: n, contact: c } = resultat.erreurs
+      return { erreurs: { ...(n && { nom: n }), ...(c && { contact: c }) } }
+    }
+    revalidatePath("/")
+    return { id: resultat.prospect.id }
+  } catch (erreur) {
+    console.error("Échec de l'ajout rapide", erreur)
+    return { erreurGenerale: "Impossible d'enregistrer, réessayez." }
+  }
 }
 
 const FORMAT_DATE = /^\d{4}-\d{2}-\d{2}$/
