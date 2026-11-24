@@ -35,10 +35,16 @@ export type SqliteProspectRepository = ProspectRepository & {
   fermer(): Promise<void>
 }
 
+/**
+ * Dépôt sur une base libsql : fichier SQLite local (`file:...`) ou Turso
+ * (`libsql://...`). Le jeton Turso vient de DATABASE_AUTH_TOKEN par défaut,
+ * il est inutile pour une base locale.
+ */
 export async function createSqliteProspectRepository(
   url: string,
+  authToken = process.env.DATABASE_AUTH_TOKEN,
 ): Promise<SqliteProspectRepository> {
-  const client = createClient({ url })
+  const client = createClient({ url, authToken: authToken || undefined })
   await client.execute(SCHEMA)
 
   const relire = async (id: string) => {
