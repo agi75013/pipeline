@@ -404,3 +404,64 @@ describe("action d'ajout rapide dans une colonne", () => {
     expect(creerProspectRapide).not.toHaveBeenCalled()
   })
 })
+
+describe("longueur maximale des saisies (zod)", () => {
+  const trop = (n: number) => "a".repeat(n + 1)
+  const ID_LONG = trop(100)
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    creerProspect.mockResolvedValue({ ok: true, prospect: {} })
+    modifierProspect.mockResolvedValue({ ok: true, prospect: {} })
+    creerProspectRapide.mockResolvedValue({ ok: true, prospect: { id: "p1" } })
+  })
+
+  it("accepte des champs à la longueur maximale", async () => {
+    const formData = formulaire()
+    formData.set("nom", "a".repeat(200))
+    formData.set("notes", "a".repeat(5000))
+    expect(await ajouterProspect({}, formData)).toEqual({ succes: true })
+    expect(creerProspect).toHaveBeenCalled()
+  })
+
+  it.each([
+    ["nom", 200],
+    ["societe", 200],
+    ["email", 200],
+    ["telephone", 200],
+    ["notes", 5000],
+  ])("refuse un champ %s trop long à l'ajout et à la modification, sans appeler le service", async (champ, max) => {
+    const formData = formulaire()
+    formData.set(champ, trop(max))
+    expect((await ajouterProspect({}, formData)).erreurGenerale).toBe(
+      "Saisie invalide, réessayez.",
+    )
+    expect(
+      (await modifierProspectAction("p1", {}, formData)).erreurGenerale,
+    ).toBe("Saisie invalide, réessayez.")
+    expect(creerProspect).not.toHaveBeenCalled()
+    expect(modifierProspect).not.toHaveBeenCalled()
+  })
+
+  it("refuse un nom ou un contact trop long à l'ajout rapide, sans appeler le service", async () => {
+    const etats = [
+      await ajoutRapideProspect("RDV", trop(200), "z@t.fr"),
+      await ajoutRapideProspect("RDV", "Zoé", trop(200)),
+    ]
+    for (const etat of etats) expect(etat.erreurGenerale).toBeTruthy()
+    expect(creerProspectRapide).not.toHaveBeenCalled()
+  })
+
+  it("refuse un id trop long dans toutes les actions qui en reçoivent, sans appeler le service", async () => {
+    expect((await changerEtapeProspect(ID_LONG, "RDV")).erreur).toBeTruthy()
+    expect((await definirDateRelanceProspect(ID_LONG, "")).erreur).toBeTruthy()
+    expect((await supprimerProspectAction(ID_LONG)).erreur).toBeTruthy()
+    expect(
+      (await modifierProspectAction(ID_LONG, {}, formulaire())).erreurGenerale,
+    ).toBeTruthy()
+    expect(changerEtape).not.toHaveBeenCalled()
+    expect(definirDateRelance).not.toHaveBeenCalled()
+    expect(supprimerProspect).not.toHaveBeenCalled()
+    expect(modifierProspect).not.toHaveBeenCalled()
+  })
+})

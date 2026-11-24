@@ -9,11 +9,21 @@ import { ETAPES } from "@/service/prospect-service"
 // Les entrées d'une server action viennent du navigateur : on ne s'y fie pas.
 // Ces schémas contrôlent la forme (texte, étape connue). Les règles métier
 // (nom et contact obligatoires) restent dans le service.
-const champTexte = z
-  .string()
-  .trim()
-  .nullish()
-  .transform((valeur) => valeur ?? "")
+// Longueurs maximales : bornent ce qu'un appel direct peut envoyer en base.
+const MAX_CHAMP = 200
+const MAX_NOTES = 5000
+const MAX_ID = 100
+
+const texte = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .nullish()
+    .transform((valeur) => valeur ?? "")
+
+const champTexte = texte(MAX_CHAMP)
+const identifiant = z.string().trim().min(1).max(MAX_ID)
 
 const saisieProspectSchema = z.object({
   nom: champTexte,
@@ -23,7 +33,7 @@ const saisieProspectSchema = z.object({
 })
 
 const changementEtapeSchema = z.object({
-  id: z.string().trim().min(1),
+  id: identifiant,
   etape: z.enum(ETAPES),
 })
 
@@ -32,7 +42,7 @@ export type EtatChangementEtape = { erreur?: string }
 // Date vide = effacement (null). Sinon le format YYYY-MM-DD est exigé ;
 // la validité réelle de la date (pas de 30 février) reste au service.
 const dateRelanceSchema = z.object({
-  id: z.string().trim().min(1),
+  id: identifiant,
   date: z
     .string()
     .trim()
@@ -84,7 +94,7 @@ export async function changerEtapeProspect(
 const creationProspectSchema = z.object({
   saisie: saisieProspectSchema.extend({
     dateRelance: champTexte.refine((v) => v === "" || /^\d{4}-\d{2}-\d{2}$/.test(v)),
-    notes: champTexte,
+    notes: texte(MAX_NOTES),
   }),
   etape: z.enum(ETAPES),
 })
@@ -127,8 +137,8 @@ export async function ajouterProspect(
 
 const ajoutRapideSchema = z.object({
   etape: z.enum(ETAPES),
-  nom: z.string().trim(),
-  contact: z.string().trim(),
+  nom: z.string().trim().max(MAX_CHAMP),
+  contact: z.string().trim().max(MAX_CHAMP),
 })
 
 export type EtatAjoutRapide = {
@@ -165,12 +175,12 @@ export async function ajoutRapideProspect(
 const FORMAT_DATE = /^\d{4}-\d{2}-\d{2}$/
 
 const modificationProspectSchema = z.object({
-  id: z.string().trim().min(1),
+  id: identifiant,
   saisie: saisieProspectSchema.extend({
     dateRelance: champTexte.refine(
       (valeur) => valeur === "" || FORMAT_DATE.test(valeur),
     ),
-    notes: champTexte,
+    notes: texte(MAX_NOTES),
   }),
 })
 
@@ -214,7 +224,7 @@ export async function modifierProspect(
   return { succes: true }
 }
 
-const suppressionSchema = z.object({ id: z.string().trim().min(1) })
+const suppressionSchema = z.object({ id: identifiant })
 
 export async function supprimerProspect(
   id: string,
