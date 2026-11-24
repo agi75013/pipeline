@@ -46,3 +46,6 @@ next-env.d.ts
 *.sqlite
 *.sqlite3
 !.env.example
+
+# captures du MCP Playwright (peuvent contenir des données de prospects)
+.playwright-mcp/
